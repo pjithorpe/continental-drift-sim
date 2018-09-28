@@ -4,36 +4,37 @@ using UnityEngine;
 
 public class MeshTest : MonoBehaviour {
 
-    float width = 5;
-    float height = 5;
+    float triWidth = 1f;
+    float triHeight = 1f;
+
+    int meshWidth = 10;
+    int meshHeight = 10;
 
     void Start()
     {
-        Debug.Log("SCRIPT STARTING");
+        Debug.Log("CREATING MESH");
         MeshFilter mf = GetComponent<MeshFilter>();
-        Debug.Log("Hello: " + mf.ToString());
 
         var mesh = new Mesh();
         mf.mesh = mesh;
-        
-        Vector3[] vertices = new Vector3[4];
+
+        int vertexCount = meshWidth * meshHeight;
+
+        Vector3[] vertices = new Vector3[vertexCount];
 
         vertices[0] = new Vector3(0, 0, 0);
-        vertices[1] = new Vector3(width, 0, 0);
-        vertices[2] = new Vector3(0, height, 0);
-        vertices[3] = new Vector3(width, height, 0);
+        vertices[1] = new Vector3(triWidth, 0, 0);
+        vertices[2] = new Vector3(0, triHeight, 0);
+        vertices[3] = new Vector3(triWidth, triHeight, 0);
 
         mesh.vertices = vertices;
 
         int[] tri = new int[6];
 
-        tri[0] = 0;
-        tri[1] = 2;
-        tri[2] = 1;
+        for (int i=0; i<vertexCount; i++)
+        {
 
-        tri[3] = 2;
-        tri[4] = 3;
-        tri[5] = 1;
+        }
 
         mesh.triangles = tri;
 
