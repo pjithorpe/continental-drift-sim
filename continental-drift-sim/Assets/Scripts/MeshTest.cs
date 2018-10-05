@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using GeographyHelper;
+using geo = GeographyHelper;
+
 public class MeshTest : MonoBehaviour {
 
     [SerializeField] public float triWidth = 1f;
@@ -117,6 +120,23 @@ public class MeshTest : MonoBehaviour {
         uv[3] = new Vector2(1, 1);
 
         mesh.uv = uv;*/
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown("space"))
+        {
+            Plate testPlate = new Plate();
+
+            Vector2 bottom_left = new Vector2(20, 20);
+            Vector2 top_left = new Vector2(20, 50);
+            Vector2 top_right = new Vector2(50, 70);
+            Vector2 bottom_right = new Vector2(40, 10);
+
+            testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
+            testPlate.SetDefaultHeight(10.0f);
+            testPlate.DrawToGrid();
+        }
     }
 
     /*//USE FOR VERTEX VISUALISATION
