@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class MeshTest : MonoBehaviour {
 
-    float triWidth = 1f;
-    float triHeight = 1f;
+    [SerializeField] public float triWidth = 1f;
+    [SerializeField] public float triHeight = 1f;
 
-    int meshWidth = 225;
-    int meshHeight = 225;
+    [SerializeField] int meshWidth = 300;
+    [SerializeField] public int meshHeight = 300;
 
     int vertexCount;
     int triCount;
@@ -70,22 +70,32 @@ public class MeshTest : MonoBehaviour {
                 }
                 else
                 {
-                    tris[ti] = vi;
+                    tris[ti] = tris[ti + 3] = vi;
                     tris[ti + 1] = vi + meshWidth;
-                    tris[ti + 2] = vi + meshWidth + 1;
-                    tris[ti + 3] = vi;
-                    tris[ti + 4] = vi + meshWidth + 1;
+                    tris[ti + 2] = tris[ti + 4] = vi + meshWidth + 1;
                     tris[ti + 5] = vi + 1;
                 }
             }
         }
         mesh.triangles = tris;
+
         mesh.RecalculateNormals();
 
         MeshFilter mf = gameObject.AddComponent<MeshFilter>();
         mf.mesh = mesh;
         MeshRenderer mr = gameObject.AddComponent<MeshRenderer>();
         mr.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
+
+        Camera mainCam = Camera.main;
+        mainCam.enabled = true;
+        mainCam.aspect = 1;
+        mainCam.transform.position = new Vector3(meshWidth * triWidth * 0.5f, 1.0f, meshHeight * triHeight * 0.5f);
+        //This enables the orthographic mode
+        mainCam.orthographic = true;
+        //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
+        mainCam.orthographicSize = meshHeight * triWidth * 0.5f;
+        //Set the orthographic Camera Viewport size and position
+        mainCam.rect = new Rect(0.0f, 0.0f, meshWidth * triWidth, meshHeight * triHeight);
 
         /*Vector3[] normals = new Vector3[tris.Length];
 
@@ -109,7 +119,7 @@ public class MeshTest : MonoBehaviour {
         mesh.uv = uv;*/
     }
 
-    /* USE FOR VERTEX VISUALISATION
+    /*//USE FOR VERTEX VISUALISATION
     private void OnDrawGizmos()
     {
         if (verts != null)
