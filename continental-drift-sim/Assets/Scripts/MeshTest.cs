@@ -10,8 +10,8 @@ public class MeshTest : MonoBehaviour {
     [SerializeField] public float triWidth = 1f;
     [SerializeField] public float triHeight = 1f;
 
-    [SerializeField] int meshWidth = 300;
-    [SerializeField] public int meshHeight = 300;
+    [SerializeField] int meshWidth = 256;
+    [SerializeField] public int meshHeight = 256;
 
     int vertexCount;
     int triCount;
@@ -135,8 +135,16 @@ public class MeshTest : MonoBehaviour {
 
             testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
             testPlate.SetDefaultHeight(10.0f);
-            testPlate.DrawToGrid();
+
+            List<Vector2[]> outlinePlot = testPlate.GetVertexPlot();
+
+
         }
+    }
+
+    void UpdateMesh()
+    {
+
     }
 
     /*//USE FOR VERTEX VISUALISATION

@@ -26,7 +26,7 @@ namespace GeographyHelper
             speed = s;
         }
 
-        public List<Vector2[]> DrawToGrid()
+        public List<Vector2[]> GetVertexPlot()
         {
             var lines = new List<Vector2[]>();
             for (int i=0; i<outline.Length; i++)
