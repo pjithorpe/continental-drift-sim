@@ -17,6 +17,9 @@ public class MeshTest : MonoBehaviour {
     int triCount;
     Vector3[] verts;
     int[] tris;
+    Mesh mesh;
+    MeshFilter mf;
+    MeshRenderer mr;
 
     private void Awake()
     {
@@ -24,13 +27,16 @@ public class MeshTest : MonoBehaviour {
         triCount = (meshWidth - 1) * (meshHeight -1) * 6;
         verts = new Vector3[vertexCount];
         tris = new int[triCount];
+
+        mf = gameObject.AddComponent<MeshFilter>();
+        mr = gameObject.AddComponent<MeshRenderer>();
     }
 
     void Start()
     {
         Debug.Log("CREATING MESH");
 
-        var mesh = new Mesh();
+        mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
         //x and y (in number of triWidths/Lengths)
@@ -85,9 +91,9 @@ public class MeshTest : MonoBehaviour {
 
         mesh.RecalculateNormals();
 
-        MeshFilter mf = gameObject.AddComponent<MeshFilter>();
+        
         mf.mesh = mesh;
-        MeshRenderer mr = gameObject.AddComponent<MeshRenderer>();
+        
         mr.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
 
         Camera mainCam = Camera.main;
@@ -136,16 +142,43 @@ public class MeshTest : MonoBehaviour {
 
             testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
             testPlate.SetDefaultHeight(10.0f);
+            Debug.Log("About to call GetVertexPlot()...");
+            int[,] outlinePlot = testPlate.GetVertexPlot();
+            var heights = new float[outlinePlot.GetLength(0)];
 
-            List<Vector2[]> outlinePlot = testPlate.GetVertexPlot();
+            //temp
+            for (int i=0; i<heights.Length; i++)
+            {
+                heights[i] = 10.0f;
+            }
 
-
+            UpdateMesh(outlinePlot, heights);
         }
     }
 
-    void UpdateMesh()
+    //takes a set of x,y coords and the heights to change them to
+    void UpdateMesh(int[,] changes, float[] heights)
     {
+        if (changes.GetLength(0) != heights.Length)
+        {
+            //Error!
+            Debug.Log("changes and heights arrays are different sizes!");
+        }
 
+        for (int i=0; i<changes.GetLength(0); i++)
+        {
+            Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
+            int xPos = changes[i,0];
+            int yPos = changes[i,1];
+            int vertIndex = yPos * meshWidth + xPos;
+
+            float h = heights[i];
+
+            verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
+        }
+
+        mesh.vertices = verts;
+        mf.mesh = mesh;
     }
 
     /*//USE FOR VERTEX VISUALISATION

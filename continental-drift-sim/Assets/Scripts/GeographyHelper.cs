@@ -26,11 +26,14 @@ namespace GeographyHelper
             speed = s;
         }
 
-        public List<Vector2[]> GetVertexPlot()
+        public int[,] GetVertexPlot()
         {
-            var lines = new List<Vector2[]>();
+            var lines = new int[outline.Length][,];
+            Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
+            int plotCount = 0;
             for (int i=0; i<outline.Length; i++)
             {
+                Debug.Log("working on outline " + i.ToString());
                 Vector2 p1 = outline[i];
                 Vector2 p2;
                 if(i == outline.Length - 1)
@@ -43,15 +46,35 @@ namespace GeographyHelper
                 }
 
                 // get the nearest points to the start and end of the line, and draw it to points
-                lines.Add(DrawLine((int)Math.Round(p1.x, 0), (int)Math.Round(p1.y, 0), (int)Math.Round(p2.x, 0), (int)Math.Round(p2.y, 0)));
+                int p1XCoord = (int)Math.Round(p1.x, 0);
+                int p1YCoord = (int)Math.Round(p1.y, 0);
+                int p2XCoord = (int)Math.Round(p2.x, 0);
+                int p2YCoord = (int)Math.Round(p2.y, 0);
+                Debug.Log("Approximated coords - p1x: " + p1XCoord.ToString() + ", p1y: " + p1YCoord.ToString() + ", p2x: " + p2XCoord.ToString() + ", p2y: " + p2YCoord.ToString());
+
+                Debug.Log("About to call DrawLine()...");
+                lines[i] = DrawLine(p1XCoord, p1YCoord, p2XCoord, p2YCoord);
+                plotCount += lines[i].GetLength(0);
             }
 
-            return lines;
+            int[,] plots = new int[plotCount, 2];
+
+            int plotIndex = 0;
+            for (int i=0; i<lines.Length; i++) 
+            {
+                for (int j=0; j<lines[i].GetLength(0); j++)
+                {
+                    plots[plotIndex, 0] = lines[i][j, 0];
+                    plots[plotIndex, 1] = lines[i][j, 1];
+                }
+            }
+
+            return plots;
         }
 
-        private Vector2[] DrawLine(int x1, int y1, int x2, int y2)
+        private int[,] DrawLine(int x1, int y1, int x2, int y2)
         {
-            var line = new List<Vector2>();
+            var line = new List<int[]>();
 
             int w = x2 - x1;
             int h = y2 - y1;
@@ -71,7 +94,7 @@ namespace GeographyHelper
             int numerator = longest >> 1;
             for (int i = 0; i <= longest; i++)
             {
-                line.Add(new Vector2(x1, y1));
+                line.Add(new int[] { x1, y1 });
                 numerator += shortest;
                 if (!(numerator < longest))
                 {
@@ -86,7 +109,15 @@ namespace GeographyHelper
                 }
             }
 
-            return line.ToArray();
+            int[,] linePlot = new int[line.Count, 3];
+
+            for (int i=0; i<line.Count; i++)
+            {
+                linePlot[i, 0] = line[i][0];
+                linePlot[i, 1] = line[i][1];
+            }
+
+            return linePlot;
         }
     }
 
