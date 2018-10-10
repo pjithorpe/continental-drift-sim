@@ -31,6 +31,7 @@ public class MeshTest : MonoBehaviour {
         Debug.Log("CREATING MESH");
 
         var mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
         //x and y (in number of triWidths/Lengths)
         int xPos;
