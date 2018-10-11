@@ -21,6 +21,11 @@ namespace GeographyHelper
             defaultHeight = dH;
         }
 
+        public float GetDefaultHeight()
+        {
+        	return defaultHeight;
+        }
+
         public void SetSpeed(float s)
         {
             speed = s;
@@ -66,6 +71,7 @@ namespace GeographyHelper
                 {
                     plots[plotIndex, 0] = lines[i][j, 0];
                     plots[plotIndex, 1] = lines[i][j, 1];
+                    plotIndex++;
                 }
             }
 
@@ -113,6 +119,7 @@ namespace GeographyHelper
 
             for (int i=0; i<line.Count; i++)
             {
+            	Debug.Log("i: " + i.ToString() + ", x: " + line[i][0].ToString() + ", y: " + line[i][1].ToString());
                 linePlot[i, 0] = line[i][0];
                 linePlot[i, 1] = line[i][1];
             }

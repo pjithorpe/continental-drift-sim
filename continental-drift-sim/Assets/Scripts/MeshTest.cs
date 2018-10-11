@@ -141,7 +141,7 @@ public class MeshTest : MonoBehaviour {
             Vector2 bottom_right = new Vector2(40, 10);
 
             testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
-            testPlate.SetDefaultHeight(10.0f);
+            testPlate.SetDefaultHeight(2.0f);
             Debug.Log("About to call GetVertexPlot()...");
             int[,] outlinePlot = testPlate.GetVertexPlot();
             var heights = new float[outlinePlot.GetLength(0)];
@@ -149,7 +149,7 @@ public class MeshTest : MonoBehaviour {
             //temp
             for (int i=0; i<heights.Length; i++)
             {
-                heights[i] = 10.0f;
+                heights[i] = testPlate.GetDefaultHeight();
             }
 
             UpdateMesh(outlinePlot, heights);
