@@ -100,7 +100,21 @@ namespace GeographyHelper
             int numerator = longest >> 1;
             for (int i = 0; i <= longest; i++)
             {
+                //Check if this creates a diagonal that cannot be represented
+                if ((y1 % 2 == 1) && (line[-1][1] != y1))
+                {
+                    if(Math.Abs(line[-1][0] - x1) == 1)
+                    {
+                        line.Add(new int[] { });
+                    }
+                    else if(Math.Abs(line[-1][0] - x1) == 2)
+                    {
+                        line.Add(new int[] { });
+                    }
+                }
+
                 line.Add(new int[] { x1, y1 });
+
                 numerator += shortest;
                 if (!(numerator < longest))
                 {
