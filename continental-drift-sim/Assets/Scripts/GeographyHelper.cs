@@ -5,60 +5,80 @@ using UnityEngine;
 
 namespace GeographyHelper
 {
+	public class Crust
+	{
+		public Mesh Mesh { get; set; }
+		public float DefaultHeight { get; set; }
+		public float SeaLevel { get; set; }
+
+		private Plate[] plates;
+
+		public Plate[] GetPlates()
+		{
+			return plates;
+		}
+
+		public void SetPlates(Plate[] ps)
+		{
+			for (int i=0; i<plates.Length; i++)
+			{
+				plates[i].SetCrust(this);
+			}
+		}
+
+		public void AddPlate(Plate p)
+		{
+			Plate[] newPlates = new Plate[plates.Length + 1];
+
+			for (int i=0; i<plates.Length; i++)
+			{
+				newPlates[i] = plates[i];
+			}
+			newPlates[plates.Length] = p;
+
+			plates = newPlates;
+		}
+	}
+
     public class Plate
     {
-        Vector2[] outline; //ordered points representing plate outline
-        protected float defaultHeight; //default height of vertices inside the plate
-        protected float xSpeed;
-        protected float zSpeed;
+        public Vector2[] Outline { get; set; } //ordered points representing plate outline
+        public float DefaultHeight { get; set; } //default height of vertices inside the plate
+        public float XSpeed { get; set; }
+        public float ZSpeed { get; set; }
 
-        public void SetOutline(Vector2[] oL)
+        private Crust crust;
+
+        public Crust GetCrust()
         {
-            outline = oL;
+        	return crust;
         }
 
-        public Vector2[] GetOutline()
+        public void SetCrust(Crust cr)
         {
-        	return outline;
+        	crust = cr;
+        	crust.AddPlate(this);
         }
 
-        public void SetDefaultHeight(float dH)
-        {
-            defaultHeight = dH;
-        }
 
-        public float GetDefaultHeight()
-        {
-        	return defaultHeight;
-        }
-
-        public void SetXSpeed(float s)
-        {
-            xSpeed = s;
-        }
-
-        public void SetZSpeed(float s)
-        {
-        	zSpeed = s;
-        }
 
         public int[,] GetVertexPlot()
         {
-            var lines = new int[outline.Length][,];
-            Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
+            var lines = new int[Outline.Length][,];
+            //Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
             int plotCount = 0;
-            for (int i=0; i<outline.Length; i++)
+            for (int i=0; i<Outline.Length; i++)
             {
-                Debug.Log("working on outline " + i.ToString());
-                Vector2 p1 = outline[i];
+                //Debug.Log("working on outline " + i.ToString());
+                Vector2 p1 = Outline[i];
                 Vector2 p2;
-                if(i == outline.Length - 1)
+                if(i == Outline.Length - 1)
                 {
-                    p2 = outline[0];
+                    p2 = Outline[0];
                 }
                 else
                 {
-                    p2 = outline[i + 1];
+                    p2 = Outline[i + 1];
                 }
 
                 // get the nearest points to the start and end of the line, and draw it to points
@@ -66,9 +86,9 @@ namespace GeographyHelper
                 int p1YCoord = (int)Math.Round(p1.y, 0);
                 int p2XCoord = (int)Math.Round(p2.x, 0);
                 int p2YCoord = (int)Math.Round(p2.y, 0);
-                Debug.Log("Approximated coords - p1x: " + p1XCoord.ToString() + ", p1y: " + p1YCoord.ToString() + ", p2x: " + p2XCoord.ToString() + ", p2y: " + p2YCoord.ToString());
+                //Debug.Log("Approximated coords - p1x: " + p1XCoord.ToString() + ", p1y: " + p1YCoord.ToString() + ", p2x: " + p2XCoord.ToString() + ", p2y: " + p2YCoord.ToString());
 
-                Debug.Log("About to call DrawLine()...");
+                //Debug.Log("About to call DrawLine()...");
                 lines[i] = DrawLine(p1XCoord, p1YCoord, p2XCoord, p2YCoord);
                 plotCount += lines[i].GetLength(0);
             }
@@ -171,6 +191,10 @@ namespace GeographyHelper
             }
 
             return linePlot;
+        }
+
+        public void MovePlate() {
+
         }
     }
 
