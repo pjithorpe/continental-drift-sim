@@ -21,6 +21,9 @@ public class MeshTest : MonoBehaviour {
     MeshFilter mf;
     MeshRenderer mr;
 
+    Plate testPlate;
+    int[,] outlinePlot;
+
     private void Awake()
     {
         vertexCount = meshWidth * meshHeight;
@@ -30,6 +33,8 @@ public class MeshTest : MonoBehaviour {
 
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
+
+        testPlate = new Plate();
     }
 
     void Start()
@@ -131,19 +136,19 @@ public class MeshTest : MonoBehaviour {
 
     void Update()
     {
+    	
+
         if (Input.GetKeyDown("space"))
         {
-            Plate testPlate = new Plate();
+        	Vector2 bottom_left = new Vector2(20, 20);
+	        Vector2 top_left = new Vector2(20, 50);
+	        Vector2 top_right = new Vector2(50, 70);
+	        Vector2 bottom_right = new Vector2(40, 10);
 
-            Vector2 bottom_left = new Vector2(20, 20);
-            Vector2 top_left = new Vector2(20, 50);
-            Vector2 top_right = new Vector2(50, 70);
-            Vector2 bottom_right = new Vector2(40, 10);
-
-            testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
+	        testPlate.SetOutline(new Vector2[] { bottom_left, top_left, top_right, bottom_right });
             testPlate.SetDefaultHeight(2.0f);
             Debug.Log("About to call GetVertexPlot()...");
-            int[,] outlinePlot = testPlate.GetVertexPlot();
+            outlinePlot = testPlate.GetVertexPlot();
             var heights = new float[outlinePlot.GetLength(0)];
 
             //temp
@@ -153,7 +158,48 @@ public class MeshTest : MonoBehaviour {
             }
 
             UpdateMesh(outlinePlot, heights);
+
+            Vector2[] oLine = testPlate.GetOutline();
+        	if(oLine == null){
+        		Debug.Log("broken");
+        	}
         }
+
+        /* test moving a plate
+        if (Input.GetKeyDown("c"))
+        {
+        	var heights = new float[outlinePlot.GetLength(0)];
+        	for (int i=0; i<heights.Length; i++)
+            {
+                heights[i] = 0.0f;
+            }
+
+        	UpdateMesh(outlinePlot, heights);
+        	testPlate.SetXSpeed(1.0f);
+        	testPlate.SetZSpeed(2.0f);
+
+        	Vector2[] oLine = testPlate.GetOutline();
+        	if(oLine == null){
+        		Debug.Log("broken");
+        	}
+        	for (int i=0; i<oLine.Length; i++)
+        	{
+        		oLine[i].x += 1.0f;
+        		oLine[i].y += 2.0f;
+        	}
+
+        	testPlate.SetOutline(oLine);
+        	outlinePlot = testPlate.GetVertexPlot();
+
+            //temp
+            for (int i=0; i<heights.Length; i++)
+            {
+                heights[i] = testPlate.GetDefaultHeight();
+            }
+
+        	UpdateMesh(outlinePlot, heights);
+        }
+        */
     }
 
     //takes a set of x,y coords and the heights to change them to

@@ -7,13 +7,19 @@ namespace GeographyHelper
 {
     public class Plate
     {
-        protected Vector2[] outline; //ordered points representing plate outline
+        Vector2[] outline; //ordered points representing plate outline
         protected float defaultHeight; //default height of vertices inside the plate
-        protected float speed;
+        protected float xSpeed;
+        protected float zSpeed;
 
         public void SetOutline(Vector2[] oL)
         {
             outline = oL;
+        }
+
+        public Vector2[] GetOutline()
+        {
+        	return outline;
         }
 
         public void SetDefaultHeight(float dH)
@@ -26,9 +32,14 @@ namespace GeographyHelper
         	return defaultHeight;
         }
 
-        public void SetSpeed(float s)
+        public void SetXSpeed(float s)
         {
-            speed = s;
+            xSpeed = s;
+        }
+
+        public void SetZSpeed(float s)
+        {
+        	zSpeed = s;
         }
 
         public int[,] GetVertexPlot()
@@ -98,22 +109,43 @@ namespace GeographyHelper
                 dx2 = 0;
             }
             int numerator = longest >> 1;
+
+            int xPrev = x1;
+            int yPrev = y1;
+
             for (int i = 0; i <= longest; i++)
             {
                 //Check if this creates a diagonal that cannot be represented
-                if ((y1 % 2 == 1) && (line[-1][1] != y1))
+                if (y1 != yPrev && x1 != xPrev)
                 {
-                    if(Math.Abs(line[-1][0] - x1) == 1)
+                    if (y1 % 2 == 0)
                     {
-                        line.Add(new int[] { });
+                    	if (xPrev == x1 + 1)
+                    	{
+                    		line.Add(new int[] { x1, yPrev });
+                    	}
+                    	else if (xPrev == x1 - 2)
+                    	{
+                    		line.Add(new int[] { x1 - 1, yPrev });
+                    	}
                     }
-                    else if(Math.Abs(line[-1][0] - x1) == 2)
+                    else
                     {
-                        line.Add(new int[] { });
+                    	if (xPrev == x1 + 2)
+                    	{
+                    		line.Add(new int[] { x1 + 1, yPrev });
+                    	}
+                    	else if (xPrev == x1 - 1)
+                    	{
+                    		line.Add(new int[] { x1, yPrev});
+                    	}
                     }
                 }
 
                 line.Add(new int[] { x1, y1 });
+
+                xPrev = x1;
+                yPrev = y1;
 
                 numerator += shortest;
                 if (!(numerator < longest))
