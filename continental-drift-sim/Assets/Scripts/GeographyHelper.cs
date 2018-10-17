@@ -5,61 +5,279 @@ using UnityEngine;
 
 namespace GeographyHelper
 {
-	public class Crust
-	{
-		public Mesh Mesh { get; set; }
-		public float DefaultHeight { get; set; }
-		public float SeaLevel { get; set; }
+    public class Crust
+    {
+        // field private vars
+        private Mesh mesh;
+        private MeshFilter meshFilter;
+        private MeshRenderer meshRenderer;
+        private int width;
+        private int height;
+        private float triWidth;
+        private float triHeight;
+        private float defaultHeight;
+        private float seaLevel;
+        private Plate[] plates;
 
-		private Plate[] plates;
 
-		public Plate[] GetPlates()
-		{
-			return plates;
-		}
+        // non-field definitions
+        private int vertexCount;
+        private int triCount;
+        private Vector3[] verts;
+        private int[] tris;
 
-		public void SetPlates(Plate[] ps)
-		{
-			for (int i=0; i<plates.Length; i++)
-			{
-				plates[i].SetCrust(this);
-			}
-		}
+        // Constructor
+        public Crust(int width, int height, float triWidth, float triHeight, MeshFilter mf, MeshRenderer mr, Mesh mesh = null, float defaultHeight = 0.0f, float seaLevel = 5.0f, Plate[] plates = null)
+        {
+            this.width = width;
+            this.height = height;
+            this.triWidth = triWidth;
+            this.triHeight = triHeight;
+            if (mesh == null) { this.mesh = new Mesh(); }
+            else { this.mesh = mesh; }
+            this.meshFilter = mf;
+            this.meshRenderer = mr;
+            this.defaultHeight = defaultHeight;
+            this.seaLevel = seaLevel;
+            if (plates == null) { this.plates = new Plates[0]; }
+            else { this.plates = plates; }
+        }
 
-		public void AddPlate(Plate p)
-		{
-			Plate[] newPlates = new Plate[plates.Length + 1];
+        public Mesh Mesh
+        {
+            get { return this.mesh; }
+            set
+            {
+                this.mesh = value;
+                if (this.mesh.vertices != null && this.mesh.vertices.Length > 0)
+                {
+                    verts = this.mesh.vertices;
+                }
+            }
+        }
+        public MeshFilter MeshFilter
+        {
+            get { return this.meshFilter; }
+            set { this.meshFilter = value; }
+        }
+        public MeshRenderer MeshRenderer
+        {
+            get { return this.meshRenderer; }
+            set { this.meshRenderer = value; }
+        }
+        public int Width
+        {
+            get { return this.width; }
+            set { this.width = value; }
+        }
+        public int Height
+        {
+            get { return this.height; }
+            set { this.height = value; }
+        }
+        public float DefaultHeight
+        {
+            get { return this.defaultHeight; }
+            set { this.defaultHeight = value; }
+        }
+        public float SeaLevel
+        {
+            get { return this.seaLevel; }
+            set { this.seaLevel = value; }
+        }
+        public Plate[] Plates
+        {
+            get { return this.plates; }
+            set
+            {
+                this.plates = value;
+                for (int i=0; i<plates.Length; i++)
+                {
+                    this.plates[i].Crust = this;
+                }
+            }
+        }
 
-			for (int i=0; i<plates.Length; i++)
-			{
-				newPlates[i] = plates[i];
-			}
-			newPlates[plates.Length] = p;
+        public void AddPlate(Plate p)
+        {
+            Plate[] newPlates = new Plate[plates.Length + 1];
 
-			plates = newPlates;
-		}
-	}
+            for (int i=0; i<plates.Length; i++)
+            {
+                newPlates[i] = plates[i];
+            }
+            newPlates[plates.Length] = p;
+
+            plates = newPlates;
+        }
+
+        public void BuildMesh()
+        {
+            mesh = new Mesh();
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            vertexCount = width * height;
+            triCount = (width - 1) * (height -1) * 6;
+            verts = new Vector3[vertexCount];
+            tris = new int[triCount];
+
+            //x and y (in number of triWidths/Lengths)
+            int xPos;
+            int zPos;
+
+            //vertices
+            for (int i=0; i<verts.Length; i++)
+            {
+                
+                xPos = i % width;
+                zPos = i / width;
+
+                if (zPos % 2 == 0)
+                {
+                    verts[i] = new Vector3(xPos * triWidth, 0, zPos * triHeight);
+                }
+                else
+                {
+                    verts[i] = new Vector3((xPos * triWidth) + (triWidth / 2), 0, zPos * triHeight);
+                }
+
+            }
+
+            mesh.vertices = verts;
+
+
+            //triangles
+            //vi = vertex index
+            //ti = triangle index
+            for (int ti=0, vi=0, y=0; y<height-1; y++, vi++)
+            {
+                for (int x = 0; x < width-1; x++, ti+=6, vi++)
+                {
+                    if ((vi / width) % 2 == 0)
+                    {
+                        tris[ti] = vi;
+                        tris[ti + 3] = tris[ti + 2] = vi + 1;
+                        tris[ti + 4] = tris[ti + 1] = vi + width;
+                        tris[ti + 5] = vi + width + 1;
+                    }
+                    else
+                    {
+                        tris[ti] = tris[ti + 3] = vi;
+                        tris[ti + 1] = vi + width;
+                        tris[ti + 2] = tris[ti + 4] = vi + width + 1;
+                        tris[ti + 5] = vi + 1;
+                    }
+                }
+            }
+            mesh.triangles = tris;
+
+            mesh.RecalculateNormals();
+
+            
+            meshFilter.mesh = mesh;
+            
+            meshRenderer.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
+
+            Camera mainCam = Camera.main;
+            mainCam.enabled = true;
+            mainCam.aspect = 1;
+            mainCam.transform.position = new Vector3(width * triWidth * 0.5f, 100.0f, height * triHeight * 0.5f);
+            //This enables the orthographic mode
+            mainCam.orthographic = true;
+            //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
+            mainCam.orthographicSize = height * triWidth * 0.5f;
+            //Set the orthographic Camera Viewport size and position
+            mainCam.rect = new Rect(0.0f, 0.0f, width * triWidth, height * triHeight);
+
+
+            /*Vector3[] normals = new Vector3[tris.Length];
+
+        for (int i = 0; i < normals.Length; i++)
+        {
+            normals[i] = Vector3.up;
+        }
+
+        mesh.normals = normals;
+
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        */
+        /*Vector2[] uv = new Vector2[vertexCount];
+
+        uv[0] = new Vector2(0, 0);
+        uv[1] = new Vector2(1, 0);
+        uv[2] = new Vector2(0, 1);
+        uv[3] = new Vector2(1, 1);
+
+        mesh.uv = uv;*/
+        }
+
+        //takes a set of x,y coords and the heights to change them to
+        public void UpdateMesh(int[,] changes, float[] heights)
+        {
+            if (changes.GetLength(0) != heights.Length)
+            {
+                //Error!
+                Debug.Log("changes and heights arrays are different sizes!");
+            }
+
+            for (int i=0; i<changes.GetLength(0); i++)
+            {
+                Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
+                int xPos = changes[i,0];
+                int yPos = changes[i,1];
+                int vertIndex = yPos * width + xPos;
+
+                float h = heights[i];
+
+                verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
+            }
+
+            mesh.vertices = verts;
+            meshFilter.mesh = mesh;
+        }
+    }
 
     public class Plate
     {
-        public Vector2[] Outline { get; set; } //ordered points representing plate outline
-        public float DefaultHeight { get; set; } //default height of vertices inside the plate
-        public float XSpeed { get; set; }
-        public float ZSpeed { get; set; }
-
+        // field private vars
+        private Vector2[] outline;
+        private float defaultHeight = 5.0f;
+        private float xSpeed = 0.0f;
+        private float zSpeed = 0.0f;
         private Crust crust;
 
-        public Crust GetCrust()
-        {
-        	return crust;
-        }
+        // non-field definitions
+        private int[,] outlinePlot; //not (get/set)able
 
-        public void SetCrust(Crust cr)
+        public Vector2[] Outline //ordered points representing plate outline
         {
-        	crust = cr;
-        	crust.AddPlate(this);
+            get { return this.outline; }
+            set { this.outline = value; }
         }
-
+        public float DefaultHeight //default height of vertices inside the plate
+        {
+            get { return this.defaultHeight; }
+            set { this.defaultHeight = value; }
+        }
+        public float XSpeed
+        {
+            get { return this.xSpeed; }
+            set { this.xSpeed = value; }
+        }
+        public float ZSpeed
+        {
+            get { return this.zSpeed; }
+            set { this.zSpeed = value; }
+        }
+        public Crust Crust
+        {
+            get { return this.crust; }
+            set
+            {
+                this.crust = value;
+                this.crust.AddPlate(this);
+            }
+        }
 
 
         public int[,] GetVertexPlot()
@@ -106,6 +324,7 @@ namespace GeographyHelper
                 }
             }
 
+            this.outlinePlot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
             return plots;
         }
 
@@ -140,25 +359,25 @@ namespace GeographyHelper
                 {
                     if (y1 % 2 == 0)
                     {
-                    	if (xPrev == x1 + 1)
-                    	{
-                    		line.Add(new int[] { x1, yPrev });
-                    	}
-                    	else if (xPrev == x1 - 2)
-                    	{
-                    		line.Add(new int[] { x1 - 1, yPrev });
-                    	}
+                        if (xPrev == x1 + 1)
+                        {
+                            line.Add(new int[] { x1, yPrev });
+                        }
+                        else if (xPrev == x1 - 2)
+                        {
+                            line.Add(new int[] { x1 - 1, yPrev });
+                        }
                     }
                     else
                     {
-                    	if (xPrev == x1 + 2)
-                    	{
-                    		line.Add(new int[] { x1 + 1, yPrev });
-                    	}
-                    	else if (xPrev == x1 - 1)
-                    	{
-                    		line.Add(new int[] { x1, yPrev});
-                    	}
+                        if (xPrev == x1 + 2)
+                        {
+                            line.Add(new int[] { x1 + 1, yPrev });
+                        }
+                        else if (xPrev == x1 - 1)
+                        {
+                            line.Add(new int[] { x1, yPrev});
+                        }
                     }
                 }
 
@@ -185,7 +404,7 @@ namespace GeographyHelper
 
             for (int i=0; i<line.Count; i++)
             {
-            	Debug.Log("i: " + i.ToString() + ", x: " + line[i][0].ToString() + ", y: " + line[i][1].ToString());
+                Debug.Log("i: " + i.ToString() + ", x: " + line[i][0].ToString() + ", y: " + line[i][1].ToString());
                 linePlot[i, 0] = line[i][0];
                 linePlot[i, 1] = line[i][1];
             }
@@ -193,8 +412,51 @@ namespace GeographyHelper
             return linePlot;
         }
 
-        public void MovePlate() {
+        public void MovePlate()
+        {
+            int[,] prevPlot;
+            if (outlinePlot != null)
+            {
+                prevPlot = outlinePlot;
+            }
+            else if (outline != null)
+            {
+                prevPlot = this.GetVertexPlot();
+            }
+            else
+            {
+                Debug.Log("No outline plot or outline for plate.");
+            }
 
+            //Reset previous plate vertices
+            var heights = new float[prevPlot.GetLength(0)];
+            for (int i=0; i<heights.Length; i++)
+            {
+                heights[i] = crust.DefaultHeight;
+            }
+
+            crust.UpdateMesh(outlinePlot, heights);
+
+            //Now draw plate in new posistion
+            if(outline == null){
+                Debug.Log("No outline for plate.");
+            }
+
+            for (int i=0; i<outline.Length; i++)
+            {
+                outline[i].x += xSpeed;
+                outline[i].y += zSpeed;
+            }
+
+            outlinePlot = this.GetVertexPlot();
+
+            //temp
+            for (int i=0; i<heights.Length; i++)
+            {
+                heights[i] = this.DefaultHeight;
+            }
+
+            crust.UpdateMesh(outlinePlot, heights);
         }
     }
 
