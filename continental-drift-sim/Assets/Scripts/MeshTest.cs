@@ -26,8 +26,6 @@ public class MeshTest : MonoBehaviour {
         mr = gameObject.AddComponent<MeshRenderer>();
 
         testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight);
-        testPlate = new Plate();
-        testPlate.Crust = testCrust;
     }
 
     void Start()
@@ -44,13 +42,20 @@ public class MeshTest : MonoBehaviour {
 
         if (Input.GetKeyDown("space"))
         {
-        	Vector2 bottom_left = new Vector2(20, 20);
-	        Vector2 top_left = new Vector2(20, 50);
-	        Vector2 top_right = new Vector2(50, 70);
-	        Vector2 bottom_right = new Vector2(40, 10);
+            Vector2 bottom_left = new Vector2(20, 20);
+	        Vector2 top_left = new Vector2(8, 50);
+	        Vector2 top_right = new Vector2(60, 80);
+	        Vector2 bottom_right = new Vector2(50, 20);
+            Vector2 next = new Vector2(80, 20);
+            Vector2 next2 = new Vector2(75, 30);
+            Vector2 next2p5 = new Vector2(85, 90);
+            Vector2 next3 = new Vector2(90, 30);
+            Vector2 next4 = new Vector2(85, 5);
+            Vector2 next5 = new Vector2(40, 5);
 
-	        testPlate.Outline = new Vector2[] { bottom_left, top_left, top_right, bottom_right };
-            testPlate.DefaultHeight = 2.0f;
+            testPlate = new Plate(outline: new Vector2[] { bottom_left, top_left, top_right, bottom_right, next, next2, next2p5, next3, next4, next5 });
+            testPlate.Crust = testCrust;
+            testPlate.DefaultHeight = 3.0f;
             testPlate.XSpeed = 1.0f;
             testPlate.ZSpeed = 3.0f;
 
