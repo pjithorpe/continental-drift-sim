@@ -100,6 +100,8 @@ namespace GeographyHelper
 
         public void AddPlate(Plate p)
         {
+            p.Crust = this;
+
             Plate[] newPlates = new Plate[plates.Length + 1];
 
             for (int i=0; i<plates.Length; i++)
@@ -249,6 +251,15 @@ namespace GeographyHelper
         // non-field definitions
         private int[,] outlinePlot; //not (get/set)able
 
+        public Plate(Vector2[] outline = null, float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
+        {
+            this.outline = outline;
+            this.defaultHeight = defaultHeight;
+            this.xSpeed = xSpeed;
+            this.zSpeed = zSpeed;
+            if (crust != null) { crust.AddPlate(this); }
+        }
+
         public Vector2[] Outline //ordered points representing plate outline
         {
             get { return this.outline; }
@@ -272,11 +283,7 @@ namespace GeographyHelper
         public Crust Crust
         {
             get { return this.crust; }
-            set
-            {
-                this.crust = value;
-                this.crust.AddPlate(this);
-            }
+            set { this.crust = value; }
         }
 
 
@@ -414,14 +421,14 @@ namespace GeographyHelper
 
         public void DrawPlate()
         {
-            int[,] prevPlot;
+            int[,] plot;
             if (outlinePlot != null)
             {
-                prevPlot = outlinePlot;
+                plot = outlinePlot;
             }
             else if (outline != null)
             {
-                prevPlot = this.GetVertexPlot();
+                plot = this.GetVertexPlot();
             }
             else
             {
@@ -429,7 +436,7 @@ namespace GeographyHelper
                 return;
             }
 
-            var heights = new float[outlinePlot.GetLength(0)];
+            var heights = new float[plot.GetLength(0)];
 
             //temp
             for (int i = 0; i < heights.Length; i++)
@@ -437,7 +444,7 @@ namespace GeographyHelper
                 heights[i] = defaultHeight;
             }
 
-            crust.UpdateMesh(outlinePlot, heights);
+            crust.UpdateMesh(plot, heights);
         }
 
         public void MovePlate()
