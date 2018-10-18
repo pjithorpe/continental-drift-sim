@@ -216,6 +216,7 @@ namespace GeographyHelper
         //takes a set of x,y coords and the heights to change them to
         public void UpdateMesh(int[,] changes, float[] heights)
         {
+            Debug.Log(changes.GetLength(0).ToString());
             if (changes.GetLength(0) != heights.Length)
             {
                 //Error!
@@ -224,7 +225,7 @@ namespace GeographyHelper
 
             for (int i=0; i<changes.GetLength(0); i++)
             {
-                Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
+                //Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
                 int xPos = changes[i,0];
                 int yPos = changes[i,1];
                 int vertIndex = yPos * width + xPos;
@@ -266,7 +267,11 @@ namespace GeographyHelper
         public Vector2[] Outline //ordered points representing plate outline
         {
             get { return this.outline; }
-            set { this.outline = value; }
+            set
+            {
+                this.outline = value;
+                this.SetBoundaries();
+            }
         }
         public float DefaultHeight //default height of vertices inside the plate
         {
@@ -306,12 +311,14 @@ namespace GeographyHelper
                     if (pZ < minZ) { minZ = pZ; }
                     else if (pZ > maxZ) { maxZ = pZ; }
                 }
+
+                Debug.Log(minX.ToString() + " " + maxX.ToString() + " " + minZ.ToString() + " " + maxZ.ToString() + " ");
             }
         }
 
         private int[,] GetVertexPlot()
         {
-            var lines = new int[outline.Length][,];
+            int[][,] lines = new int[outline.Length][,];
             //Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
             int plotCount = 0;
             for (int i=0; i<outline.Length; i++)
@@ -340,21 +347,91 @@ namespace GeographyHelper
                 plotCount += lines[i].GetLength(0);
             }
 
+
+            //Now fill it in
+            int x1 = (int)Math.Round(minX, 0);
+            int x2 = (int)Math.Round(maxX, 0);
+            int z1 = (int)Math.Round(minZ, 0);
+            int z2 = (int)Math.Round(maxZ, 0);
+
+            Debug.Log(x1.ToString() + " " + x2.ToString() + " " + z1.ToString() + " " + z2.ToString() + " ");
+
+            int[,] fillPlot = new int[(x2 - x1)*(z2 - z1) , 2];
+            int fillPlotCount = 0;
+            int polyCorners = outline.Length;
+            int[] nodes = new int[z2-z1];
+            int n;
+
+            for (int z=z1; z <= z2; z++)
+            {
+                int nodeCount = 0;
+                n = polyCorners - 1;
+
+                int i = 0;
+                for (i=0; i<polyCorners; i++)
+                {
+                    if (outline[i].y < z && outline[n].y >= z || outline[n].y < z && outline[i].y >= z)
+                    {
+                        nodes[nodeCount++] = (int)(outline[i].x + (z - outline[i].y) / (outline[n].y - outline[i].y) * (outline[n].x - outline[i].x));
+                    }
+                    n = i;
+                }
+
+                i = 0;
+                while (i < nodeCount - 1)
+                {
+                    if (nodes[i]>nodes[i+1])
+                    {
+                        int swap = nodes[i];
+                        nodes[i] = nodes[i + 1];
+                        nodes[i + 1] = swap;
+
+                        if (i != 0) { i--; }
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+
+                for (i=0; i<nodeCount; i+=2)
+                {
+                    if (nodes[i] >= x2) break;
+                    if (nodes[i + 1] > x1)
+                    {
+                        if (nodes[i] < x1) nodes[i] = x1;
+                        if (nodes[i + 1] > x2) nodes[i + 1] = x2;
+                        for (int x = nodes[i]; x < nodes[i + 1]; x++)
+                        {
+                            fillPlot[fillPlotCount,0] = x;
+                            fillPlot[fillPlotCount,1] = z;
+                            fillPlotCount++;
+                            plotCount++;
+                        }
+                    }
+                }
+            }
+
+
             int[,] plots = new int[plotCount, 2];
 
             int plotIndex = 0;
-            for (int i=0; i<lines.Length; i++) 
+            for (int i=0; i<lines.Length; i++)
             {
-                for (int j=0; j<lines[i].GetLength(0); j++)
+                for (int j = 0; j < lines[i].GetLength(0); j++)
                 {
                     plots[plotIndex, 0] = lines[i][j, 0];
                     plots[plotIndex, 1] = lines[i][j, 1];
                     plotIndex++;
                 }
             }
-
-
-            //Now fill it in
+            Debug.Log(fillPlotCount.ToString());
+            for (int i=0; i<fillPlotCount; i++)
+            {
+                plots[plotIndex,0] = fillPlot[i,0];
+                plots[plotIndex,1] = fillPlot[i,1];
+                plotIndex++;
+            }
 
             this.plot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
             return plots;
@@ -436,7 +513,7 @@ namespace GeographyHelper
 
             for (int i=0; i<line.Count; i++)
             {
-                Debug.Log("i: " + i.ToString() + ", x: " + line[i][0].ToString() + ", y: " + line[i][1].ToString());
+                //Debug.Log("i: " + i.ToString() + ", x: " + line[i][0].ToString() + ", y: " + line[i][1].ToString());
                 linePlot[i, 0] = line[i][0];
                 linePlot[i, 1] = line[i][1];
             }
