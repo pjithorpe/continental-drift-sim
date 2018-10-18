@@ -39,7 +39,7 @@ namespace GeographyHelper
             this.meshRenderer = mr;
             this.defaultHeight = defaultHeight;
             this.seaLevel = seaLevel;
-            if (plates == null) { this.plates = new Plates[0]; }
+            if (plates == null) { this.plates = new Plate[0]; }
             else { this.plates = plates; }
         }
 
@@ -191,24 +191,24 @@ namespace GeographyHelper
 
             /*Vector3[] normals = new Vector3[tris.Length];
 
-        for (int i = 0; i < normals.Length; i++)
-        {
-            normals[i] = Vector3.up;
-        }
+            for (int i = 0; i < normals.Length; i++)
+            {
+                normals[i] = Vector3.up;
+            }
 
-        mesh.normals = normals;
+            mesh.normals = normals;
 
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        */
-        /*Vector2[] uv = new Vector2[vertexCount];
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            */
+            /*Vector2[] uv = new Vector2[vertexCount];
 
-        uv[0] = new Vector2(0, 0);
-        uv[1] = new Vector2(1, 0);
-        uv[2] = new Vector2(0, 1);
-        uv[3] = new Vector2(1, 1);
+            uv[0] = new Vector2(0, 0);
+            uv[1] = new Vector2(1, 0);
+            uv[2] = new Vector2(0, 1);
+            uv[3] = new Vector2(1, 1);
 
-        mesh.uv = uv;*/
+            mesh.uv = uv;*/
         }
 
         //takes a set of x,y coords and the heights to change them to
@@ -425,7 +425,8 @@ namespace GeographyHelper
             }
             else
             {
-                Debug.Log("No outline plot or outline for plate.");
+                Debug.Log("No outline plot or outline for plate. Cancelling MovePlate().");
+                return;
             }
 
             //Reset previous plate vertices

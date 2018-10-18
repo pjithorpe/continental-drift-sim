@@ -26,7 +26,7 @@ public class MeshTest : MonoBehaviour {
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(meshWidth, meshHeight, mf, mr);
+        testCrust = new Crust(meshWidth, meshHeight, triWidth, triHeight, mf, mr);
         testCrust.BuildMesh();
         testPlate = new Plate();
         testPlate.Crust = testCrust;
@@ -39,8 +39,6 @@ public class MeshTest : MonoBehaviour {
 
     void Update()
     {
-    	
-
         if (Input.GetKeyDown("space"))
         {
         	Vector2 bottom_left = new Vector2(20, 20);
@@ -60,7 +58,7 @@ public class MeshTest : MonoBehaviour {
                 heights[i] = testPlate.DefaultHeight;
             }
 
-            UpdateMesh(outlinePlot, heights);
+            testCrust.UpdateMesh(outlinePlot, heights);
 
             Vector2[] oLine = testPlate.Outline;
         	if(oLine == null){
