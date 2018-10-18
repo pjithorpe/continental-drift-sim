@@ -182,7 +182,7 @@ namespace GeographyHelper
             Camera mainCam = Camera.main;
             mainCam.enabled = true;
             mainCam.aspect = 1;
-            mainCam.transform.position = new Vector3(width * triWidth * 0.5f, 100.0f, height * triHeight * 0.5f);
+            mainCam.transform.position = new Vector3(width * triWidth * 0.5f, 50.0f, height * triHeight * 0.5f);
             //This enables the orthographic mode
             mainCam.orthographic = true;
             //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
@@ -287,7 +287,7 @@ namespace GeographyHelper
         }
 
 
-        public int[,] GetVertexPlot()
+        private int[,] GetVertexPlot()
         {
             var lines = new int[outline.Length][,];
             //Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
@@ -422,6 +422,7 @@ namespace GeographyHelper
         public void DrawPlate()
         {
             int[,] plot;
+            //outline
             if (outlinePlot != null)
             {
                 plot = outlinePlot;
@@ -435,6 +436,9 @@ namespace GeographyHelper
                 Debug.Log("No outline plot or outline for plate. Cancelling DrawPlate().");
                 return;
             }
+
+            //now fill in the middle of the plate
+
 
             var heights = new float[plot.GetLength(0)];
 
