@@ -19,7 +19,6 @@ public class MeshTest : MonoBehaviour {
 
     Crust testCrust;
     Plate testPlate;
-    int[,] outlinePlot;
 
     private void Awake()
     {
@@ -27,7 +26,6 @@ public class MeshTest : MonoBehaviour {
         mr = gameObject.AddComponent<MeshRenderer>();
 
         testCrust = new Crust(meshWidth, meshHeight, triWidth, triHeight, mf, mr);
-        testCrust.BuildMesh();
         testPlate = new Plate();
         testPlate.Crust = testCrust;
     }
@@ -39,6 +37,11 @@ public class MeshTest : MonoBehaviour {
 
     void Update()
     {
+        if (Input.GetKeyDown("c"))
+        {
+            testCrust.BuildMesh();
+        }
+
         if (Input.GetKeyDown("space"))
         {
         	Vector2 bottom_left = new Vector2(20, 20);
@@ -48,30 +51,16 @@ public class MeshTest : MonoBehaviour {
 
 	        testPlate.Outline = new Vector2[] { bottom_left, top_left, top_right, bottom_right };
             testPlate.DefaultHeight = 2.0f;
-            Debug.Log("About to call GetVertexPlot()...");
-            outlinePlot = testPlate.GetVertexPlot();
-            var heights = new float[outlinePlot.GetLength(0)];
+            testPlate.XSpeed = 1.0f;
+            testPlate.ZSpeed = 3.0f;
 
-            //temp
-            for (int i=0; i<heights.Length; i++)
-            {
-                heights[i] = testPlate.DefaultHeight;
-            }
-
-            testCrust.UpdateMesh(outlinePlot, heights);
-
-            Vector2[] oLine = testPlate.Outline;
-        	if(oLine == null){
-        		Debug.Log("broken");
-        	}
+            testPlate.DrawPlate();
         }
 
-        /* test moving a plate
-        if (Input.GetKeyDown("c"))
+        if (Input.GetKeyDown("v"))
         {
-        	
+            testPlate.MovePlate();
         }
-        */
     }
 
     /*//USE FOR VERTEX VISUALISATION

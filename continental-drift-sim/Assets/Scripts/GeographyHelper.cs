@@ -282,21 +282,21 @@ namespace GeographyHelper
 
         public int[,] GetVertexPlot()
         {
-            var lines = new int[Outline.Length][,];
+            var lines = new int[outline.Length][,];
             //Debug.Log("created lines array of size: " + lines.GetLength(0).ToString());
             int plotCount = 0;
-            for (int i=0; i<Outline.Length; i++)
+            for (int i=0; i<outline.Length; i++)
             {
                 //Debug.Log("working on outline " + i.ToString());
-                Vector2 p1 = Outline[i];
+                Vector2 p1 = outline[i];
                 Vector2 p2;
-                if(i == Outline.Length - 1)
+                if(i == outline.Length - 1)
                 {
-                    p2 = Outline[0];
+                    p2 = outline[0];
                 }
                 else
                 {
-                    p2 = Outline[i + 1];
+                    p2 = outline[i + 1];
                 }
 
                 // get the nearest points to the start and end of the line, and draw it to points
@@ -410,6 +410,34 @@ namespace GeographyHelper
             }
 
             return linePlot;
+        }
+
+        public void DrawPlate()
+        {
+            int[,] prevPlot;
+            if (outlinePlot != null)
+            {
+                prevPlot = outlinePlot;
+            }
+            else if (outline != null)
+            {
+                prevPlot = this.GetVertexPlot();
+            }
+            else
+            {
+                Debug.Log("No outline plot or outline for plate. Cancelling DrawPlate().");
+                return;
+            }
+
+            var heights = new float[outlinePlot.GetLength(0)];
+
+            //temp
+            for (int i = 0; i < heights.Length; i++)
+            {
+                heights[i] = defaultHeight;
+            }
+
+            crust.UpdateMesh(outlinePlot, heights);
         }
 
         public void MovePlate()
