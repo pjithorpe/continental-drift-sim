@@ -249,7 +249,8 @@ namespace GeographyHelper
         private Crust crust;
 
         // non-field definitions
-        private int[,] outlinePlot; //not (get/set)able
+        private int[,] plot; //not (get/set)able
+        private float minX, maxX, minZ, maxZ;
 
         public Plate(Vector2[] outline = null, float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
         {
@@ -258,6 +259,8 @@ namespace GeographyHelper
             this.xSpeed = xSpeed;
             this.zSpeed = zSpeed;
             if (crust != null) { crust.AddPlate(this); }
+
+            this.SetBoundaries();
         }
 
         public Vector2[] Outline //ordered points representing plate outline
@@ -285,7 +288,26 @@ namespace GeographyHelper
             get { return this.crust; }
             set { this.crust = value; }
         }
+        
+        private void SetBoundaries()
+        {
+            if (outline != null)
+            {
+                minX = maxX = outline[0].x;
+                minZ = maxZ = outline[0].y;
 
+                for (int i = 1; i < outline.Length; i++)
+                {
+                    float pX = outline[i].x;
+                    float pZ = outline[i].y;
+
+                    if (pX < minX) { minX = pX; }
+                    else if (pX > maxX) { maxX = pX; }
+                    if (pZ < minZ) { minZ = pZ; }
+                    else if (pZ > maxZ) { maxZ = pZ; }
+                }
+            }
+        }
 
         private int[,] GetVertexPlot()
         {
@@ -331,7 +353,10 @@ namespace GeographyHelper
                 }
             }
 
-            this.outlinePlot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
+
+            //Now fill it in
+
+            this.plot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
             return plots;
         }
 
@@ -419,13 +444,14 @@ namespace GeographyHelper
             return linePlot;
         }
 
+
         public void DrawPlate()
         {
             int[,] plot;
             //outline
-            if (outlinePlot != null)
+            if (this.plot != null)
             {
-                plot = outlinePlot;
+                plot = this.plot;
             }
             else if (outline != null)
             {
@@ -433,11 +459,9 @@ namespace GeographyHelper
             }
             else
             {
-                Debug.Log("No outline plot or outline for plate. Cancelling DrawPlate().");
+                Debug.Log("No plot or outline for plate. Cancelling DrawPlate().");
                 return;
             }
-
-            //now fill in the middle of the plate
 
 
             var heights = new float[plot.GetLength(0)];
@@ -454,9 +478,9 @@ namespace GeographyHelper
         public void MovePlate()
         {
             int[,] prevPlot;
-            if (outlinePlot != null)
+            if (plot != null)
             {
-                prevPlot = outlinePlot;
+                prevPlot = plot;
             }
             else if (outline != null)
             {
@@ -464,7 +488,7 @@ namespace GeographyHelper
             }
             else
             {
-                Debug.Log("No outline plot or outline for plate. Cancelling MovePlate().");
+                Debug.Log("No plot or outline for plate. Cancelling MovePlate().");
                 return;
             }
 
@@ -475,7 +499,7 @@ namespace GeographyHelper
                 heights[i] = crust.DefaultHeight;
             }
 
-            crust.UpdateMesh(outlinePlot, heights);
+            crust.UpdateMesh(plot, heights);
 
             //Now draw plate in new posistion
             if(outline == null){
@@ -488,7 +512,12 @@ namespace GeographyHelper
                 outline[i].y += zSpeed;
             }
 
-            outlinePlot = this.GetVertexPlot();
+            minX += xSpeed;
+            maxX += xSpeed;
+            minZ += zSpeed;
+            maxX += zSpeed;
+
+            plot = this.GetVertexPlot();
 
             //temp
             for (int i=0; i<heights.Length; i++)
@@ -496,7 +525,7 @@ namespace GeographyHelper
                 heights[i] = this.DefaultHeight;
             }
 
-            crust.UpdateMesh(outlinePlot, heights);
+            crust.UpdateMesh(plot, heights);
         }
     }
 
