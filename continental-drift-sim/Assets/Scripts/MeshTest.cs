@@ -25,7 +25,7 @@ public class MeshTest : MonoBehaviour {
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(meshWidth, meshHeight, triWidth, triHeight, mf, mr);
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight);
         testPlate = new Plate();
         testPlate.Crust = testCrust;
     }

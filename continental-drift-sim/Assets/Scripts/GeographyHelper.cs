@@ -27,7 +27,7 @@ namespace GeographyHelper
         private int[] tris;
 
         // Constructor
-        public Crust(int width, int height, float triWidth, float triHeight, MeshFilter mf, MeshRenderer mr, Mesh mesh = null, float defaultHeight = 0.0f, float seaLevel = 5.0f, Plate[] plates = null)
+        public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float defaultHeight = 0.0f, float seaLevel = 5.0f, Plate[] plates = null)
         {
             this.width = width;
             this.height = height;
