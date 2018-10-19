@@ -25,6 +25,7 @@ namespace GeographyHelper
         private int triCount;
         private Vector3[] verts;
         private int[] tris;
+        private Color[] colors;
 
         // Constructor
         public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float defaultHeight = 0.0f, float seaLevel = 5.0f, Plate[] plates = null)
@@ -172,6 +173,16 @@ namespace GeographyHelper
             }
             mesh.triangles = tris;
 
+            //colors
+            colors = new Color[verts.Length];
+
+            for (int i=0; i<verts.Length; i++)
+            {
+                colors[i] = Color.Lerp(Color.white, Color.green, verts[i].y);
+            }
+            mesh.colors = colors;
+
+
             mesh.RecalculateNormals();
 
             
@@ -234,6 +245,15 @@ namespace GeographyHelper
 
                 verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
             }
+
+            /* inefficient, temporary colors alg */
+            colors = new Color[verts.Length];
+
+            for (int i = 0; i < verts.Length; i++)
+            {
+                colors[i] = Color.Lerp(Color.white, Color.green, verts[i].y);
+            }
+            mesh.colors = colors;
 
             mesh.vertices = verts;
             meshFilter.mesh = mesh;
@@ -474,7 +494,7 @@ namespace GeographyHelper
             minX += xSpeed;
             maxX += xSpeed;
             minZ += zSpeed;
-            maxX += zSpeed;
+            maxZ += zSpeed;
 
             plot = this.GetVertexPlot();
 

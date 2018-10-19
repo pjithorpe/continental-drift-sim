@@ -155,8 +155,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   triWidth: 1
   triHeight: 1
-  meshWidth: 100
-  meshHeight: 100
+  meshWidth: 500
+  meshHeight: 500
 --- !u!1 &876773261
 GameObject:
   m_ObjectHideFlags: 0
