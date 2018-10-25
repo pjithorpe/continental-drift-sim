@@ -2,6 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
+
+using ColorExtended;
 
 namespace GeographyHelper
 {
@@ -15,8 +18,10 @@ namespace GeographyHelper
         private int height;
         private float triWidth;
         private float triHeight;
-        private float defaultHeight;
-        private float seaLevel;
+        private float baseHeight;
+        private float maxHeight; //distance above base height, not total max height
+        private float seaLevel; // between 0.0 and 1.0 representing positioning between baseHeight and maxHeight
+        private Stage stage;
         private Plate[] plates;
 
 
@@ -28,7 +33,7 @@ namespace GeographyHelper
         private Color[] colors;
 
         // Constructor
-        public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float defaultHeight = 0.0f, float seaLevel = 5.0f, Plate[] plates = null)
+        public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 10.0f, float maxHeight = 20.0f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
         {
             this.width = width;
             this.height = height;
@@ -38,8 +43,10 @@ namespace GeographyHelper
             else { this.mesh = mesh; }
             this.meshFilter = mf;
             this.meshRenderer = mr;
-            this.defaultHeight = defaultHeight;
+            this.baseHeight = baseHeight;
+            this.maxHeight = maxHeight;
             this.seaLevel = seaLevel;
+            if (stage == null) { this.stage = new CoolingStage(); }
             if (plates == null) { this.plates = new Plate[0]; }
             else { this.plates = plates; }
         }
@@ -76,15 +83,25 @@ namespace GeographyHelper
             get { return this.height; }
             set { this.height = value; }
         }
-        public float DefaultHeight
+        public float BaseHeight
         {
-            get { return this.defaultHeight; }
-            set { this.defaultHeight = value; }
+            get { return this.baseHeight; }
+            set { this.baseHeight = value; }
+        }
+        public float MaxHeight
+        {
+            get { return this.maxHeight; }
+            set { this.maxHeight = value; }
         }
         public float SeaLevel
         {
             get { return this.seaLevel; }
             set { this.seaLevel = value; }
+        }
+        public Stage Stage
+        {
+            get { return this.stage; }
+            set { this.stage = value; }
         }
         public Plate[] Plates
         {
@@ -114,7 +131,7 @@ namespace GeographyHelper
             plates = newPlates;
         }
 
-        public void BuildMesh()
+        public void BuildMesh(bool addNoise)
         {
             mesh = new Mesh();
             mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -127,22 +144,51 @@ namespace GeographyHelper
             int xPos;
             int zPos;
 
+            //Precalculating floats which are used in loop
+            float halfTriWidth = triWidth / 2;
+            float halfWidth = width / 10; // Have to add a small fraction for Mathf.PerlinNoise to work
+            float seed = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
             //vertices
-            for (int i=0; i<verts.Length; i++)
+            if (addNoise)
             {
-                
-                xPos = i % width;
-                zPos = i / width;
-
-                if (zPos % 2 == 0)
+                for (int i = 0; i < verts.Length; i++)
                 {
-                    verts[i] = new Vector3(xPos * triWidth, 0, zPos * triHeight);
-                }
-                else
-                {
-                    verts[i] = new Vector3((xPos * triWidth) + (triWidth / 2), 0, zPos * triHeight);
-                }
+                    xPos = i % width;
+                    zPos = i / width;
 
+                    float perlinNoise = Mathf.PerlinNoise(((i % width) / halfWidth) + seed, ((i / width) / halfWidth) + seed);
+
+                    float y = BaseHeight + (maxHeight * perlinNoise);
+
+                    if (zPos % 2 == 0)
+                    {
+                        verts[i] = new Vector3(xPos * triWidth, y, zPos * triHeight);
+                    }
+                    else
+                    {
+                        verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, y, zPos * triHeight);
+                    }
+
+                }
+            }
+            else
+            {
+                for (int i = 0; i < verts.Length; i++)
+                {
+
+                    xPos = i % width;
+                    zPos = i / width;
+
+                    if (zPos % 2 == 0)
+                    {
+                        verts[i] = new Vector3(xPos * triWidth, 0, zPos * triHeight);
+                    }
+                    else
+                    {
+                        verts[i] = new Vector3((xPos * triWidth) + (triWidth / 2), 0, zPos * triHeight);
+                    }
+
+                }
             }
 
             mesh.vertices = verts;
@@ -173,15 +219,22 @@ namespace GeographyHelper
             }
             mesh.triangles = tris;
 
+
             //colors
+            var oceanBlue = new Color32(28, 107, 160, 255);
+            var bedrockGrey = new Color32(79, 70, 60, 255);
+            var mountainGrey = new Color32(140, 127, 112, 255);
+            var sandBrown = new Color32(100, 105, 64, 255);
+
+            //currently just assumes magma stage
             colors = new Color[verts.Length];
-
-            for (int i=0; i<verts.Length; i++)
+            for (int i = 0; i < colors.Length; i++)
             {
-                colors[i] = Color.Lerp(Color.white, Color.green, verts[i].y);
+                float normalisedHeight = (verts[i].y - baseHeight) / maxHeight;
+                colors[i] = stage.PickColour(normalisedHeight, seaLevel);
             }
-            mesh.colors = colors;
 
+            mesh.colors = colors;
 
             mesh.RecalculateNormals();
 
@@ -197,7 +250,7 @@ namespace GeographyHelper
             //This enables the orthographic mode
             mainCam.orthographic = true;
             //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
-            mainCam.orthographicSize = height * triWidth * 0.5f;
+            mainCam.orthographicSize = width * triWidth * 0.5f;
             //Set the orthographic Camera Viewport size and position
             mainCam.rect = new Rect(0.0f, 0.0f, width * triWidth, height * triHeight);
 
@@ -224,38 +277,63 @@ namespace GeographyHelper
             mesh.uv = uv;*/
         }
 
-        //takes a set of x,y coords and the heights to change them to
-        public void UpdateMesh(int[,] changes, float[] heights)
+        /*
+         * Generates a random set of thin plates as an initial state
+         */ 
+        public void InitialiseCrust(int plateCount)
         {
-            Debug.Log(changes.GetLength(0).ToString());
-            if (changes.GetLength(0) != heights.Length)
+            var plates = new Plate[plateCount];
+            var centroids = new int[plateCount,2];
+
+            // First, choose points on the mesh at random as our plate centres (centroids)
+            for (int i=0; i<plateCount; i++)
             {
-                //Error!
-                Debug.Log("changes and heights arrays are different sizes!");
+                plates[i] = new Plate();
+                //centroids[i][0] = Random.Range(0, Width);
+                //centroids[i][1] = Random.Range(0, Height);
             }
+        }
 
-            for (int i=0; i<changes.GetLength(0); i++)
+        // - takes a set of x,y coords and the heights to change them to
+        // - set updateall to true to update all vertex colours
+        public void UpdateMesh(int[,] changes = null, float[] heights = null, bool updateAll = false)
+        {
+            if (updateAll)
             {
-                //Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
-                int xPos = changes[i,0];
-                int yPos = changes[i,1];
-                int vertIndex = yPos * width + xPos;
-
-                float h = heights[i];
-
-                verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
+                for (int i=0; i<verts.Length; i++)
+                {
+                    float h = verts[i].y;
+                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    colors[i] = stage.PickColour(normalisedHeight, seaLevel);
+                }
             }
-
-            /* inefficient, temporary colors alg */
-            colors = new Color[verts.Length];
-
-            for (int i = 0; i < verts.Length; i++)
+            else
             {
-                colors[i] = Color.Lerp(Color.white, Color.green, verts[i].y);
+                if (changes.GetLength(0) != heights.Length)
+                {
+                    //Error!
+                    Debug.Log("changes and heights arrays are different sizes!");
+                }
+
+                for (int i=0; i<changes.GetLength(0); i++)
+                {
+                    //Debug.Log("i: " + i.ToString() + " , xPos: " + changes[i, 0] + " , yPos: " + changes[i, 1]);
+                    int xPos = changes[i, 0];
+                    int yPos = changes[i, 1];
+                    int vertIndex = yPos * width + xPos;
+
+                    float h = heights[i];
+
+                    verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
+
+                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                }
             }
-            mesh.colors = colors;
+            
 
             mesh.vertices = verts;
+            mesh.colors = colors;
             meshFilter.mesh = mesh;
         }
     }
@@ -263,7 +341,6 @@ namespace GeographyHelper
     public class Plate
     {
         // field private vars
-        private Vector2[] outline;
         private float defaultHeight = 5.0f;
         private float xSpeed = 0.0f;
         private float zSpeed = 0.0f;
@@ -273,9 +350,8 @@ namespace GeographyHelper
         private int[,] plot; //not (get/set)able
         private float minX, maxX, minZ, maxZ;
 
-        public Plate(Vector2[] outline = null, float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
+        public Plate(float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
         {
-            this.outline = outline;
             this.defaultHeight = defaultHeight;
             this.xSpeed = xSpeed;
             this.zSpeed = zSpeed;
@@ -284,15 +360,7 @@ namespace GeographyHelper
             this.SetBoundaries();
         }
 
-        public Vector2[] Outline //ordered points representing plate outline
-        {
-            get { return this.outline; }
-            set
-            {
-                this.outline = value;
-                this.SetBoundaries();
-            }
-        }
+        
         public float DefaultHeight //default height of vertices inside the plate
         {
             get { return this.defaultHeight; }
@@ -316,7 +384,7 @@ namespace GeographyHelper
         
         private void SetBoundaries()
         {
-            if (outline != null)
+            /*if (outline != null)
             {
                 minX = maxX = outline[0].x;
                 minZ = maxZ = outline[0].y;
@@ -333,92 +401,29 @@ namespace GeographyHelper
                 }
 
                 Debug.Log(minX.ToString() + " " + maxX.ToString() + " " + minZ.ToString() + " " + maxZ.ToString() + " ");
-            }
+            }*/
         }
 
         private int[,] GetVertexPlot()
         {
-            int plotCount = 0;
+            return null;
+            /*int plotCount = 0;
+
+            int[][,] pdPlot
+            float[] heights;
             
-            //Now fill it in
-            int x1 = (int)Math.Round(minX, 0);
-            int x2 = (int)Math.Round(maxX, 0);
-            int z1 = (int)Math.Round(minZ, 0);
-            int z2 = (int)Math.Round(maxZ, 0);
-
-            Debug.Log(x1.ToString() + " " + x2.ToString() + " " + z1.ToString() + " " + z2.ToString() + " ");
-
-            int[,] fillPlot = new int[(x2 - x1)*(z2 - z1) , 2];
-            int fillPlotCount = 0;
-            int polyCorners = outline.Length;
-            int[] nodes = new int[z2-z1];
-            int n;
-
-            for (int z=z1; z <= z2; z++)
-            {
-                int nodeCount = 0;
-                n = polyCorners - 1;
-
-                int i = 0;
-                for (i=0; i<polyCorners; i++)
-                {
-                    if (outline[i].y < z && outline[n].y >= z || outline[n].y < z && outline[i].y >= z)
-                    {
-                        nodes[nodeCount++] = (int)(outline[i].x + (z - outline[i].y) / (outline[n].y - outline[i].y) * (outline[n].x - outline[i].x));
-                    }
-                    n = i;
-                }
-
-                i = 0;
-                while (i < nodeCount - 1)
-                {
-                    if (nodes[i]>nodes[i+1])
-                    {
-                        int swap = nodes[i];
-                        nodes[i] = nodes[i + 1];
-                        nodes[i + 1] = swap;
-
-                        if (i != 0) { i--; }
-                    }
-                    else
-                    {
-                        i++;
-                    }
-                }
-
-                for (i=0; i<nodeCount; i+=2)
-                {
-                    if (nodes[i] >= x2) break;
-                    if (nodes[i + 1] > x1)
-                    {
-                        if (nodes[i] < x1) nodes[i] = x1;
-                        if (nodes[i + 1] > x2) nodes[i + 1] = x2;
-                        for (int x = nodes[i]; x < nodes[i + 1]; x++)
-                        {
-                            fillPlot[fillPlotCount,0] = x;
-                            fillPlot[fillPlotCount,1] = z;
-                            fillPlotCount++;
-                            plotCount++;
-                        }
-                    }
-                }
-            }
 
 
             int[,] plots = new int[plotCount, 2];
 
-            int plotIndex = 0;
-            
-            Debug.Log(fillPlotCount.ToString());
-            for (int i=0; i<fillPlotCount; i++)
+            for (int i=0; i<plotCount; i++)
             {
-                plots[plotIndex,0] = fillPlot[i,0];
-                plots[plotIndex,1] = fillPlot[i,1];
-                plotIndex++;
+                plots[i,0] = pdPlot[i,0];
+                plots[i,1] = pdPlot[i,1];
             }
 
             this.plot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
-            return plots;
+            return plots;*/
         }
 
         
@@ -431,10 +436,6 @@ namespace GeographyHelper
             if (this.plot != null)
             {
                 plot = this.plot;
-            }
-            else if (outline != null)
-            {
-                plot = this.GetVertexPlot();
             }
             else
             {
@@ -461,10 +462,6 @@ namespace GeographyHelper
             {
                 prevPlot = plot;
             }
-            else if (outline != null)
-            {
-                prevPlot = this.GetVertexPlot();
-            }
             else
             {
                 Debug.Log("No plot or outline for plate. Cancelling MovePlate().");
@@ -475,21 +472,14 @@ namespace GeographyHelper
             var heights = new float[prevPlot.GetLength(0)];
             for (int i=0; i<heights.Length; i++)
             {
-                heights[i] = crust.DefaultHeight;
+                heights[i] = crust.BaseHeight;
             }
 
             crust.UpdateMesh(plot, heights);
 
             //Now draw plate in new posistion
-            if(outline == null){
-                Debug.Log("No outline for plate.");
-            }
 
-            for (int i=0; i<outline.Length; i++)
-            {
-                outline[i].x += xSpeed;
-                outline[i].y += zSpeed;
-            }
+            //TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
             minX += xSpeed;
             maxX += xSpeed;
@@ -508,6 +498,67 @@ namespace GeographyHelper
             crust.UpdateMesh(plot, heights);
         }
     }
+
+
+
+    /*********
+     * STAGES
+     *********/
+
+    public interface Stage
+    {
+        Color PickColour(float normailsedHeight, float seaLevel);
+    }
+
+    public class CoolingStage : Stage
+    {
+        public Color PickColour(float normalisedHeight, float seaLevel)
+        {
+            if (normalisedHeight <= 0.2f)
+            {
+                return Color.Lerp(Color.yellow, Color.red, normalisedHeight / 0.2f);
+            }
+            else if (0.2f < normalisedHeight && normalisedHeight < 0.3f)
+            {
+                return ColorEx.bedrockGrey;
+            }
+            else
+            {
+                return Color.Lerp(ColorEx.bedrockGrey, ColorEx.mountainGrey, (normalisedHeight - 0.3f) / 0.7f);
+            }
+        }
+    }
+
+    public class WaterStage: Stage
+    {
+        public Color PickColour(float normalisedHeight, float seaLevel)
+        {
+            return Color.Lerp(ColorEx.bedrockGrey, ColorEx.mountainGrey, normalisedHeight);
+        }
+    } 
+
+    public class LifeStage : Stage
+    {
+        public Color PickColour(float normalisedHeight, float seaLevel)
+        {
+            if (normalisedHeight <= 0.45f)
+            {
+                return Color.Lerp(ColorEx.bedrockGrey, ColorEx.mountainGrey, normalisedHeight / 0.45f);
+            }
+            if ((0.45f < normalisedHeight) && (normalisedHeight < 0.55f))
+            {
+                return ColorEx.sandBrown;
+            }
+            else
+            {
+                return Color.Lerp(ColorEx.bedrockGrey, Color.green, normalisedHeight);
+            }
+        }
+    }
+
+
+
+
 
     public class OceanicPlate : Plate
     {

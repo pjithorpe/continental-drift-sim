@@ -13,53 +13,57 @@ public class MeshTest : MonoBehaviour {
     [SerializeField] int meshWidth = 256;
     [SerializeField] public int meshHeight = 256;
 
+    [SerializeField] public int randomSeed = 1;
+
     Mesh mesh;
     MeshFilter mf;
     MeshRenderer mr;
 
     Crust testCrust;
     Plate testPlate;
+    float animationTime;
 
     private void Awake()
     {
+        Random.InitState(randomSeed);
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight);
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f);
     }
 
     void Start()
     {
-        
+        animationTime = 5;
     }
 
     void Update()
     {
         if (Input.GetKeyDown("c"))
         {
-            testCrust.BuildMesh();
+            Debug.Log(testCrust.Stage.GetType().ToString());
+            testCrust.BuildMesh(addNoise:true);
         }
 
         if (Input.GetKeyDown("space"))
         {
-            Vector2 bottom_left = new Vector2(20, 20);
-	        Vector2 top_left = new Vector2(8, 50);
-	        Vector2 top_right = new Vector2(60, 80);
-	        Vector2 bottom_right = new Vector2(50, 20);
-            Vector2 next = new Vector2(80, 20);
-            Vector2 next2 = new Vector2(75, 30);
-            Vector2 next2p5 = new Vector2(85, 90);
-            Vector2 next3 = new Vector2(90, 30);
-            Vector2 next4 = new Vector2(85, 5);
-            Vector2 next5 = new Vector2(40, 5);
+            
+            animationTime -= Time.deltaTime;
 
-            testPlate = new Plate(outline: new Vector2[] { bottom_left, top_left, top_right, bottom_right, next, next2, next2p5, next3, next4, next5 });
-            testPlate.Crust = testCrust;
-            testPlate.DefaultHeight = 3.0f;
-            testPlate.XSpeed = 1.0f;
-            testPlate.ZSpeed = 3.0f;
+            if (testCrust.Stage is CoolingStage)
+            {
+                testCrust.Stage = new WaterStage();
+            }
+            else if (testCrust.Stage is WaterStage)
+            {
+                testCrust.Stage = new LifeStage();
+            }
+            else if (testCrust.Stage is LifeStage)
+            {
+                testCrust.Stage = new CoolingStage();
+            }
 
-            testPlate.DrawPlate();
+            testCrust.UpdateMesh(updateAll: true);
         }
 
         if (Input.GetKeyDown("v"))
