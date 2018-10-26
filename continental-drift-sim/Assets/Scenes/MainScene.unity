@@ -157,7 +157,7 @@ MonoBehaviour:
   triHeight: 1
   meshWidth: 1000
   meshHeight: 500
-  randomSeed: 333
+  randomSeed: 222
 --- !u!1 &876773261
 GameObject:
   m_ObjectHideFlags: 0

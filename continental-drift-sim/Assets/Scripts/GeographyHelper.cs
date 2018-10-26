@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
+using Delaunay;
+
 using ColorExtended;
 
 namespace GeographyHelper
@@ -146,7 +148,7 @@ namespace GeographyHelper
 
             //Precalculating floats which are used in loop
             float halfTriWidth = triWidth / 2;
-            float halfWidth = width / 10; // Have to add a small fraction for Mathf.PerlinNoise to work
+            float halfWidth = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
             float seed = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
             //vertices
             if (addNoise)
@@ -280,18 +282,117 @@ namespace GeographyHelper
         /*
          * Generates a random set of thin plates as an initial state
          */ 
-        public void InitialiseCrust(int plateCount)
+        public List<List<int[,]>> InitialiseCrust(int plateCount)
         {
             var plates = new Plate[plateCount];
-            var centroids = new int[plateCount,2];
+            var centroids = new List<Vector2>();
+            var colors = new List<uint>();
 
             // First, choose points on the mesh at random as our plate centres (centroids)
             for (int i=0; i<plateCount; i++)
             {
                 plates[i] = new Plate();
-                //centroids[i][0] = Random.Range(0, Width);
-                //centroids[i][1] = Random.Range(0, Height);
+
+                //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
+                centroids.Add(new Vector2(Random.Range(1, Width-1), Random.Range(1, Height-1)));
+                colors.Add(0);
             }
+
+            var voronoi = new Voronoi(centroids, colors, new Rect(0, 0, (width-1)*triWidth, (height-1)*height));
+            List<List<Vector2>> voronoiRegions = voronoi.Regions();
+            int regionPointCount = 0;
+            for (int i = 0; i < voronoiRegions.Count; i++)
+            {
+                for (int j = 0; j < voronoiRegions[i].Count; j++)
+                {
+                    regionPointCount++;
+                    Debug.Log("x: " + voronoiRegions[i][j].x + ", y: " + voronoiRegions[i][j].y);
+                }
+            }
+
+            int[,] testChanges = new int[regionPointCount, 2];
+            float[] heights = new float[regionPointCount];
+            //int index = 0;
+            var meh = new List<int[,]>();
+            for (int i = 0; i < voronoiRegions.Count; i++)
+            {
+                var listofvecs = new List<Vector2>();
+                for (int j = 0; j < voronoiRegions[i].Count; j++)
+                {
+                    float x = voronoiRegions[i][j].x, y = voronoiRegions[i][j].y;
+
+                    //if(!(x < 0 || x > width || y < 0 || y > height))
+                    //{
+                    if (x < 0)
+                    {
+                        x = 0;
+                    }
+                    if (x > width)
+                    {
+                        x = width - 1;
+                    }
+                    if (y < 0)
+                    {
+                        y = 0;
+                    }
+                    if (y > height)
+                    {
+                        y = height - 1;
+                    }
+                    listofvecs.Add(new Vector2((int)Mathf.RoundToInt(x), (int)Mathf.RoundToInt(y)));
+                        //testChanges[index, 0] = (int)Mathf.RoundToInt(x);
+                        //testChanges[index, 1] = (int)Mathf.RoundToInt(y);
+                        //heights[index] = 100.0f;
+                        //index++;
+                    //}
+                }
+
+                var arrayversion = new int[listofvecs.Count, 2];
+                for (int k = 0; k < listofvecs.Count; k++)
+                {
+                    arrayversion[k, 0] = (int)listofvecs[k].x;
+                    arrayversion[k, 1] = (int)listofvecs[k].y;
+                }
+                meh.Add(arrayversion);
+            }
+
+            UpdateMesh(testChanges, heights);
+            var bbbb = new List<List<int[,]>>();
+
+            var points = voronoi.SiteCoords();
+
+            var pointsTest = new int[points.Count,2];
+
+            for (int j = 0; j < points.Count; j++)
+            {
+                float x = points[j].x, y = points[j].y;
+
+                if (x < 0)
+                {
+                    x = 0;
+                }
+                if (x > width)
+                {
+                    x = width - 1;
+                }
+                if (y < 0)
+                {
+                    y = 0;
+                }
+                if (y > height)
+                {
+                    y = height - 1;
+                }
+
+
+                pointsTest[j, 0] = (int)Mathf.RoundToInt(x);
+                pointsTest[j, 1] = (int)Mathf.RoundToInt(y);
+                heights[j] = 100.0f;
+            }
+
+            bbbb.Add(meh);
+            bbbb.Add(new List<int[,]> { pointsTest });
+            return bbbb;
         }
 
         // - takes a set of x,y coords and the heights to change them to
@@ -321,6 +422,7 @@ namespace GeographyHelper
                     int xPos = changes[i, 0];
                     int yPos = changes[i, 1];
                     int vertIndex = yPos * width + xPos;
+                    Debug.Log(xPos.ToString() + " " + yPos.ToString() + " " + vertIndex.ToString() + " / " + verts.Length.ToString());
 
                     float h = heights[i];
 
@@ -514,17 +616,17 @@ namespace GeographyHelper
     {
         public Color PickColour(float normalisedHeight, float seaLevel)
         {
-            if (normalisedHeight <= 0.2f)
+            if (normalisedHeight <= seaLevel)
             {
-                return Color.Lerp(Color.yellow, Color.red, normalisedHeight / 0.2f);
+                return Color.Lerp(Color.yellow, Color.red, normalisedHeight / seaLevel);
             }
-            else if (0.2f < normalisedHeight && normalisedHeight < 0.3f)
+            else if (seaLevel < normalisedHeight && normalisedHeight < seaLevel + 0.2f)
             {
                 return ColorEx.bedrockGrey;
             }
             else
             {
-                return Color.Lerp(ColorEx.bedrockGrey, ColorEx.mountainGrey, (normalisedHeight - 0.3f) / 0.7f);
+                return Color.Lerp(ColorEx.bedrockGrey, ColorEx.mountainGrey, (normalisedHeight - (seaLevel + 0.2f)) / (1 - (seaLevel + 0.2f)));
             }
         }
     }
