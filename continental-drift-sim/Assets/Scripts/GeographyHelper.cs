@@ -292,6 +292,7 @@ namespace GeographyHelper
             for (int i=0; i<plateCount; i++)
             {
                 plates[i] = new Plate();
+                plates[i].DefaultHeight = Random.Range(1.0f, 5.0f);
                 this.AddPlate(plates[i]);
 
                 //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
@@ -523,7 +524,6 @@ namespace GeographyHelper
             }*/
         }
 
-
         public void DrawPlate()
         {
             int[,] plot;
@@ -544,7 +544,7 @@ namespace GeographyHelper
             //temp
             for (int i = 0; i < heights.Length; i++)
             {
-                heights[i] = defaultHeight;
+                heights[i] = crust.BaseHeight + this.defaultHeight;
             }
 
             crust.UpdateMesh(plot, heights);
