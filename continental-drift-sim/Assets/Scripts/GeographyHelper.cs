@@ -282,117 +282,124 @@ namespace GeographyHelper
         /*
          * Generates a random set of thin plates as an initial state
          */ 
-        public List<List<int[,]>> InitialiseCrust(int plateCount)
+        public void InitialiseCrust(int plateCount)
         {
             var plates = new Plate[plateCount];
             var centroids = new List<Vector2>();
-            var colors = new List<uint>();
+            var nullColors = new List<uint>(); //needed to call Voronoi(), but redundant in this use case
 
             // First, choose points on the mesh at random as our plate centres (centroids)
             for (int i=0; i<plateCount; i++)
             {
                 plates[i] = new Plate();
+                this.AddPlate(plates[i]);
 
                 //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
-                centroids.Add(new Vector2(Random.Range(1, Width-1), Random.Range(1, Height-1)));
-                colors.Add(0);
+                centroids.Add(new Vector2(Random.Range(0, width * triWidth), Random.Range(0, height * triHeight)));
+                nullColors.Add(0); 
             }
 
-            var voronoi = new Voronoi(centroids, colors, new Rect(0, 0, (width-1)*triWidth, (height-1)*height));
-            List<List<Vector2>> voronoiRegions = voronoi.Regions();
-            int regionPointCount = 0;
-            for (int i = 0; i < voronoiRegions.Count; i++)
+            Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, width * triWidth, height * triHeight));
+            List<List<Vector2>> vorRegions = voronoi.Regions();
+
+            //Now that we have the regions, we can use a filling algorithm to assign all the vertices in each polygon to a plate
+            for (int i=0; i<vorRegions.Count; i++)
             {
-                for (int j = 0; j < voronoiRegions[i].Count; j++)
+                //get the min/max values for the region
+                float minX, maxX, minZ, maxZ;
+                minX = maxX = vorRegions[i][0].x;
+                minZ = maxZ = vorRegions[i][0].y;
+
+                int j = 0;
+                for (j=1; j<vorRegions[i].Count; j++)
                 {
-                    regionPointCount++;
-                    Debug.Log("x: " + voronoiRegions[i][j].x + ", y: " + voronoiRegions[i][j].y);
+                    if(vorRegions[i][j].x < minX)
+                    {
+                        minX = vorRegions[i][j].x;
+                    }
+                    else if (vorRegions[i][j].x > maxX)
+                    {
+                        maxX = vorRegions[i][j].x;
+                    }
+
+                    if (vorRegions[i][j].y < minZ)
+                    {
+                        minZ = vorRegions[i][j].y;
+                    }
+                    else if (vorRegions[i][j].y > maxZ)
+                    {
+                        maxZ = vorRegions[i][j].y;
+                    }
                 }
+
+
+                //Now fill it in
+                int x1 = (int)Math.Round(minX, 0);
+                int x2 = (int)Math.Round(maxX, 0);
+                int z1 = (int)Math.Round(minZ, 0);
+                int z2 = (int)Math.Round(maxZ, 0);
+
+                //Debug.Log(x1.ToString() + " " + x2.ToString() + " " + z1.ToString() + " " + z2.ToString() + " ");
+
+                int[,] fillPlot = new int[(x2 - x1) * (z2 - z1), 2];
+                int fillPlotCount = 0;
+                int polyCorners = vorRegions[i].Count;
+                int[] nodes = new int[z2 - z1];
+                int n;
+
+                for (int z = z1; z <= z2; z++)
+                {
+                    int nodeCount = 0;
+                    n = polyCorners - 1;
+
+                    j = 0;
+                    for (j = 0; j < polyCorners; j++)
+                    {
+                        if (vorRegions[i][j].y < z && vorRegions[i][n].y >= z || vorRegions[i][n].y < z && vorRegions[i][j].y >= z)
+                        {
+                            nodes[nodeCount++] = (int)(vorRegions[i][j].x + (z - vorRegions[i][j].y) / (vorRegions[i][n].y - vorRegions[i][j].y) * (vorRegions[i][n].x - vorRegions[i][j].x));
+                        }
+                        n = j;
+                    }
+
+                    j = 0;
+                    while (j < nodeCount - 1)
+                    {
+                        if (nodes[j] > nodes[j + 1])
+                        {
+                            int swap = nodes[j];
+                            nodes[j] = nodes[j + 1];
+                            nodes[j + 1] = swap;
+
+                            if (j != 0) { j--; }
+                        }
+                        else
+                        {
+                            j++;
+                        }
+                    }
+
+                    for (j = 0; j < nodeCount; j += 2)
+                    {
+                        if (nodes[j] >= x2) break;
+                        if (nodes[j + 1] > x1)
+                        {
+                            if (nodes[j] < x1) nodes[j] = x1;
+                            if (nodes[j + 1] > x2) nodes[j + 1] = x2;
+                            for (int x = nodes[j]; x < nodes[j + 1]; x++)
+                            {
+                                fillPlot[fillPlotCount, 0] = x;
+                                fillPlot[fillPlotCount, 1] = z;
+                                fillPlotCount++;
+                            }
+                        }
+                    }
+                }
+
+                //make plate remember its plot so we don't have to recalc if we want to use it later
+                plates[i].VertexPlot = fillPlot;
+                plates[i].DrawPlate();
             }
-
-            int[,] testChanges = new int[regionPointCount, 2];
-            float[] heights = new float[regionPointCount];
-            //int index = 0;
-            var meh = new List<int[,]>();
-            for (int i = 0; i < voronoiRegions.Count; i++)
-            {
-                var listofvecs = new List<Vector2>();
-                for (int j = 0; j < voronoiRegions[i].Count; j++)
-                {
-                    float x = voronoiRegions[i][j].x, y = voronoiRegions[i][j].y;
-
-                    //if(!(x < 0 || x > width || y < 0 || y > height))
-                    //{
-                    if (x < 0)
-                    {
-                        x = 0;
-                    }
-                    if (x > width)
-                    {
-                        x = width - 1;
-                    }
-                    if (y < 0)
-                    {
-                        y = 0;
-                    }
-                    if (y > height)
-                    {
-                        y = height - 1;
-                    }
-                    listofvecs.Add(new Vector2((int)Mathf.RoundToInt(x), (int)Mathf.RoundToInt(y)));
-                        //testChanges[index, 0] = (int)Mathf.RoundToInt(x);
-                        //testChanges[index, 1] = (int)Mathf.RoundToInt(y);
-                        //heights[index] = 100.0f;
-                        //index++;
-                    //}
-                }
-
-                var arrayversion = new int[listofvecs.Count, 2];
-                for (int k = 0; k < listofvecs.Count; k++)
-                {
-                    arrayversion[k, 0] = (int)listofvecs[k].x;
-                    arrayversion[k, 1] = (int)listofvecs[k].y;
-                }
-                meh.Add(arrayversion);
-            }
-
-            UpdateMesh(testChanges, heights);
-            var bbbb = new List<List<int[,]>>();
-
-            var points = voronoi.SiteCoords();
-
-            var pointsTest = new int[points.Count,2];
-
-            for (int j = 0; j < points.Count; j++)
-            {
-                float x = points[j].x, y = points[j].y;
-
-                if (x < 0)
-                {
-                    x = 0;
-                }
-                if (x > width)
-                {
-                    x = width - 1;
-                }
-                if (y < 0)
-                {
-                    y = 0;
-                }
-                if (y > height)
-                {
-                    y = height - 1;
-                }
-
-
-                pointsTest[j, 0] = (int)Mathf.RoundToInt(x);
-                pointsTest[j, 1] = (int)Mathf.RoundToInt(y);
-                heights[j] = 100.0f;
-            }
-
-            bbbb.Add(meh);
-            bbbb.Add(new List<int[,]> { pointsTest });
-            return bbbb;
         }
 
         // - takes a set of x,y coords and the heights to change them to
@@ -422,14 +429,17 @@ namespace GeographyHelper
                     int xPos = changes[i, 0];
                     int yPos = changes[i, 1];
                     int vertIndex = yPos * width + xPos;
-                    Debug.Log(xPos.ToString() + " " + yPos.ToString() + " " + vertIndex.ToString() + " / " + verts.Length.ToString());
+                    //Debug.Log(xPos.ToString() + " " + yPos.ToString() + " " + vertIndex.ToString() + " / " + verts.Length.ToString());
 
                     float h = heights[i];
 
-                    verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
-
-                    float normalisedHeight = (h - baseHeight) / maxHeight;
-                    colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                    //This if statement is a bit of a temp fix (there is some issue with points being 1 more than they should be on the y axis)
+                    if (vertIndex < verts.Length)
+                    {
+                        verts[vertIndex] = new Vector3(verts[vertIndex].x, h, verts[vertIndex].z);
+                        float normalisedHeight = (h - baseHeight) / maxHeight;
+                        colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                    }
                 }
             }
             
@@ -443,17 +453,19 @@ namespace GeographyHelper
     public class Plate
     {
         // field private vars
+        private int[,] vertexPlot;
         private float defaultHeight = 5.0f;
         private float xSpeed = 0.0f;
         private float zSpeed = 0.0f;
         private Crust crust;
 
         // non-field definitions
-        private int[,] plot; //not (get/set)able
+        //not (get/set)able
         private float minX, maxX, minZ, maxZ;
 
-        public Plate(float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
+        public Plate(int[,] vertexPlot = null, float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
         {
+            this.vertexPlot = vertexPlot;
             this.defaultHeight = defaultHeight;
             this.xSpeed = xSpeed;
             this.zSpeed = zSpeed;
@@ -463,6 +475,11 @@ namespace GeographyHelper
         }
 
         
+        public int[,] VertexPlot
+        {
+            get { return this.vertexPlot; }
+            set { this.vertexPlot = value;  }
+        }
         public float DefaultHeight //default height of vertices inside the plate
         {
             get { return this.defaultHeight; }
@@ -506,38 +523,14 @@ namespace GeographyHelper
             }*/
         }
 
-        private int[,] GetVertexPlot()
-        {
-            return null;
-            /*int plotCount = 0;
-
-            int[][,] pdPlot
-            float[] heights;
-            
-
-
-            int[,] plots = new int[plotCount, 2];
-
-            for (int i=0; i<plotCount; i++)
-            {
-                plots[i,0] = pdPlot[i,0];
-                plots[i,1] = pdPlot[i,1];
-            }
-
-            this.plot = plots; //make plate remember its plot so we don't have to recalc if we want to use it later
-            return plots;*/
-        }
-
-        
-
 
         public void DrawPlate()
         {
             int[,] plot;
             //outline
-            if (this.plot != null)
+            if (this.vertexPlot != null)
             {
-                plot = this.plot;
+                plot = this.vertexPlot;
             }
             else
             {
@@ -560,9 +553,9 @@ namespace GeographyHelper
         public void MovePlate()
         {
             int[,] prevPlot;
-            if (plot != null)
+            if (vertexPlot != null)
             {
-                prevPlot = plot;
+                prevPlot = vertexPlot;
             }
             else
             {
@@ -577,7 +570,7 @@ namespace GeographyHelper
                 heights[i] = crust.BaseHeight;
             }
 
-            crust.UpdateMesh(plot, heights);
+            crust.UpdateMesh(vertexPlot, heights);
 
             //Now draw plate in new posistion
 
@@ -588,16 +581,14 @@ namespace GeographyHelper
             minZ += zSpeed;
             maxZ += zSpeed;
 
-            plot = this.GetVertexPlot();
-
             //temp
-            heights = new float[plot.GetLength(0)];
+            heights = new float[vertexPlot.GetLength(0)];
             for (int i=0; i<heights.Length; i++)
             {
                 heights[i] = this.DefaultHeight;
             }
 
-            crust.UpdateMesh(plot, heights);
+            crust.UpdateMesh(vertexPlot, heights);
         }
     }
 

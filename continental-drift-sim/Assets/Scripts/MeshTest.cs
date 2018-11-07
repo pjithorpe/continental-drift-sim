@@ -27,8 +27,6 @@ public class MeshTest : MonoBehaviour {
 
     bool cooling;
 
-    List<List<int[,]>> m_edges;
-
     private void Awake()
     {
         Random.InitState(randomSeed);
@@ -40,9 +38,9 @@ public class MeshTest : MonoBehaviour {
 
     void Start()
     {
+        
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
-        testCrust.UpdateMesh(updateAll: true);
     }
 
     void Update()
@@ -70,9 +68,7 @@ public class MeshTest : MonoBehaviour {
         {
             Debug.Log(testCrust.Stage.GetType().ToString());
             testCrust.BuildMesh(addNoise:true);
-            m_edges = testCrust.InitialiseCrust(10);
-
-            
+            testCrust.InitialiseCrust(10);
         }
 
         if (Input.GetKeyDown("z"))
@@ -111,40 +107,33 @@ public class MeshTest : MonoBehaviour {
 
     private void OnDrawGizmos()
     {
+        /*
+        Gizmos.color = Color.red;
+        if (m_points != null)
+        {
+            for (int i = 0; i < m_points.Count; i++)
+            {
+                Gizmos.DrawSphere(m_points[i], 0.2f);
+            }
+        }
+
         if (m_edges != null)
         {
-            Gizmos.color = Color.blue;
-            for (int i = 0; i < m_edges[0].Count; i++)
+            Gizmos.color = Color.white;
+            for (int i = 0; i < m_edges.Count; i++)
             {
-                for (int j=1; j< m_edges[0][i].GetLength(0); j++)
+                for (int j = 1; j < m_edges[i].Count; j++)
                 {
-                    Vector3 left = new Vector3(m_edges[0][i][j - 1, 0], 100.0f, m_edges[0][i][j - 1, 1]);
-                    Vector3 right = new Vector3(m_edges[0][i][j, 0], 100.0f, m_edges[0][i][j, 1]);
+                    Vector3 left = new Vector3(m_edges[i][j - 1].x, 100.0f, m_edges[i][j - 1].y);
+                    Vector3 right = new Vector3(m_edges[i][j].x, 100.0f, m_edges[i][j].y);
                     Gizmos.DrawLine(left, right);
                 }
-                
-            }
-
-            Gizmos.color = Color.red;
-            for (int i = 0; i < m_edges[1][0].GetLength(0); i++)
-            {
-                Vector3 right = new Vector3(m_edges[1][0][i, 0], 100.0f, m_edges[1][0][i, 1]);
-                Gizmos.DrawSphere(right, 5.0f);
+                Vector3 l = new Vector3(m_edges[i][m_edges[i].Count - 1].x, 100.0f, m_edges[i][m_edges[i].Count - 1].y);
+                Vector3 r = new Vector3(m_edges[i][0].x, 100.0f, m_edges[i][0].y);
+                Gizmos.DrawLine((Vector3)l, (Vector3)r);
             }
         }
+        */
     }
-
-    /*//USE FOR VERTEX VISUALISATION
-    private void OnDrawGizmos()
-    {
-        if (verts != null)
-        {
-            Gizmos.color = Color.black;
-            for (int i = 0; i < verts.Length; i++)
-            {
-                Gizmos.DrawSphere(verts[i], 0.1f);
-            }
-        }
-    }*/
 
 }
