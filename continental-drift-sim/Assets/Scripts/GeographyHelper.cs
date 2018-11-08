@@ -456,17 +456,15 @@ namespace GeographyHelper
         // field private vars
         private int[,] vertexPlot;
         private float defaultHeight = 5.0f;
-        private float xSpeed = 0.0f;
-        private float zSpeed = 0.0f;
+        private int xSpeed = 0;
+        private int zSpeed = 0;
         private Crust crust;
 
         // non-field definitions
         //not (get/set)able
-        private float minX, maxX, minZ, maxZ;
 
-        public Plate(int[,] vertexPlot = null, float defaultHeight = 5.0f, float xSpeed = 0.0f, float zSpeed = 0.0f, Crust crust = null)
+        public Plate(float defaultHeight = 5.0f, int xSpeed = 0, int zSpeed = 0, Crust crust = null)
         {
-            this.vertexPlot = vertexPlot;
             this.defaultHeight = defaultHeight;
             this.xSpeed = xSpeed;
             this.zSpeed = zSpeed;
@@ -475,23 +473,23 @@ namespace GeographyHelper
             this.SetBoundaries();
         }
 
-        
+
         public int[,] VertexPlot
         {
-            get { return this.vertexPlot; }
-            set { this.vertexPlot = value;  }
+            get { return this.vertexPlot; } 
+            set { this.vertexPlot = value; }
         }
         public float DefaultHeight //default height of vertices inside the plate
         {
             get { return this.defaultHeight; }
             set { this.defaultHeight = value; }
         }
-        public float XSpeed
+        public int XSpeed
         {
             get { return this.xSpeed; }
             set { this.xSpeed = value; }
         }
-        public float ZSpeed
+        public int ZSpeed
         {
             get { return this.zSpeed; }
             set { this.zSpeed = value; }
@@ -576,11 +574,6 @@ namespace GeographyHelper
 
             //TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            minX += xSpeed;
-            maxX += xSpeed;
-            minZ += zSpeed;
-            maxZ += zSpeed;
-
             //temp
             heights = new float[vertexPlot.GetLength(0)];
             for (int i=0; i<heights.Length; i++)
@@ -593,11 +586,11 @@ namespace GeographyHelper
     }
 
 
-
     /*********
      * STAGES
      *********/
 
+    #region
     public interface Stage
     {
         Color PickColour(float normailsedHeight, float seaLevel);
@@ -648,6 +641,7 @@ namespace GeographyHelper
             }
         }
     }
+    #endregion
 
 
 

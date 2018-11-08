@@ -69,6 +69,12 @@ public class MeshTest : MonoBehaviour {
             Debug.Log(testCrust.Stage.GetType().ToString());
             testCrust.BuildMesh(addNoise:true);
             testCrust.InitialiseCrust(10);
+
+            for (int i=0; i<testCrust.Plates.Length; i++)
+            {
+                testCrust.Plates[i].XSpeed = Random.Range(0, 5);
+                testCrust.Plates[i].ZSpeed = Random.Range(0, 5);
+            }
         }
 
         if (Input.GetKeyDown("z"))
@@ -80,9 +86,6 @@ public class MeshTest : MonoBehaviour {
 
         if (Input.GetKeyDown("space"))
         {
-            
-            
-
             if (testCrust.Stage is CoolingStage)
             {
                 testCrust.Stage = new WaterStage();
@@ -101,7 +104,11 @@ public class MeshTest : MonoBehaviour {
 
         if (Input.GetKeyDown("v"))
         {
-            testPlate.MovePlate();
+            
+            for (int i=0; i<testCrust.Plates.Length; i++)
+            {
+                testCrust.Plates[i].MovePlate();
+            }
         }
     }
 
