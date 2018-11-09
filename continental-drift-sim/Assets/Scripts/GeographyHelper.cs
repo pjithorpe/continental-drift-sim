@@ -26,6 +26,7 @@ namespace GeographyHelper
         private Stage stage;
         private Plate[] plates;
         private Node[,] nodes; // array of nodes for the whole mesh, arranged in a matrix according to their positions
+        private Volcano[] volcanos;
 
 
         // non-field definitions
@@ -54,6 +55,7 @@ namespace GeographyHelper
             if (stage == null) { this.stage = new CoolingStage(); }
             if (plates == null) { this.plates = new Plate[0]; }
             else { this.plates = plates; }
+            this.volcanos = new Volcano[];
 
             /* Remove this when the temporary code in update mesh is removed --> */ this.AddPlate(p);
         }
@@ -122,6 +124,17 @@ namespace GeographyHelper
                 }
             }
         }
+        public Volcano[] Volcanos
+        {
+            get { return this.volcanos }
+            set{
+                this.volcanos = value;
+                for (int i=0; i<volcanos.Length; i++)
+                {
+                    this.volcanos[i].Crust = this;
+                }
+            }
+        }
 
         public void AddPlate(Plate p)
         {
@@ -136,6 +149,21 @@ namespace GeographyHelper
             newPlates[plates.Length] = p;
 
             plates = newPlates;
+        }
+
+        public void AddVolcano(Volcano v)
+        {
+            v.Crust = this;
+
+            Volcano[] newVolcanos = new Volcano[volcanos.Length + 1];
+
+            for (int i=0; i<volcanos.Length; i++)
+            {
+                newVolcanos[i] = volcanos[i];
+            }
+            newVolcanos[Volcanos.Length] = p;
+
+            volcanos = newVolcanos;
         }
 
         public void BuildMesh(bool addNoise)
@@ -484,12 +512,23 @@ namespace GeographyHelper
                     int newZ = (prevN.Z + dz) % (height - 1);
                     if (newZ < 0) { newZ = height + newZ; }
 
-                    //Check if node is on a margin
-
-                    /*if (nodes[j+dx,i+dz].Plate != prevN.Plate)
+                    //Check if node is on a margin TEMPORARY
+                    int checkX = (j-dx) % (width - 1);
+                    if(checkX < 0) { checkX = width + checkX; }
+                    int checkZ = (i-dz) % (height - 1);
+                    if(checkZ < 0) { checkZ = height + checkZ; }
+                    if (nodes[checkX,checkZ].Plate != prevN.Plate)
                     {
-
-                    }*/
+                        newNodes[j,i] = nodes[j,i].Clone();
+                        //Random chance of island starting to be generated
+                        float chance = Random.Range(0.0f, 1.0f);
+                        if(chance>0.98f)
+                        {
+                            var v = new Volcano(j,i);
+                            v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
+                            this.AddVolcano(v);
+                        }
+                    }
 
                     var n = prevN.Clone();
                     n.X = newX;
@@ -536,6 +575,13 @@ namespace GeographyHelper
             }
 
             // end temp
+
+            //Now run a particle desposition step for each volcano
+            for(int i=0; i<volcanos.Length; i++)
+            {
+                Volcano v = volcanos[i];
+                
+            }
 
             mesh.vertices = verts;
             mesh.colors = colors;
@@ -646,6 +692,49 @@ namespace GeographyHelper
     }
 
 
+    public class Volcano
+    {
+        int x,z;
+        int age;
+        int materialRate;
+        Crust crust;
+
+        public Volcano(int x, int z, Crust crust)
+        {
+            this.x = x;
+            this.z = z;
+            this.crust = crust;
+            this.age = 0;
+        }
+
+        public int X
+        {
+            get { return this.x; }
+            set { this.x = value; }
+        }
+        public int Z
+        {
+            get { return this.z; }
+            set { this.z = value; }
+        }
+        public int Age
+        {
+            get { return this.age; }
+            set { this.age = value; }
+        }
+        public int MaterialRate
+        {
+            get { return this.materialRate; }
+            set { this.materialRate = value; }
+        }
+        public Crust Crust
+        {
+            get { return this.crust; }
+            set { this.crust = value; }
+        }
+    }
+
+
     /*********
      * STAGES
      *********/
@@ -702,9 +791,6 @@ namespace GeographyHelper
         }
     }
     #endregion
-
-
-
 
 
     public class OceanicPlate : Plate
