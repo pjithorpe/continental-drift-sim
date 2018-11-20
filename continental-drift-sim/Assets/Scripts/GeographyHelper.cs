@@ -55,7 +55,7 @@ namespace GeographyHelper
             if (stage == null) { this.stage = new CoolingStage(); }
             if (plates == null) { this.plates = new Plate[0]; }
             else { this.plates = plates; }
-            this.volcanos = new Volcano[];
+            this.volcanos = new Volcano[0];
 
             /* Remove this when the temporary code in update mesh is removed --> */ this.AddPlate(p);
         }
@@ -126,7 +126,7 @@ namespace GeographyHelper
         }
         public Volcano[] Volcanos
         {
-            get { return this.volcanos }
+            get { return this.volcanos; }
             set{
                 this.volcanos = value;
                 for (int i=0; i<volcanos.Length; i++)
@@ -161,7 +161,7 @@ namespace GeographyHelper
             {
                 newVolcanos[i] = volcanos[i];
             }
-            newVolcanos[Volcanos.Length] = p;
+            newVolcanos[Volcanos.Length] = v;
 
             volcanos = newVolcanos;
         }
@@ -226,9 +226,7 @@ namespace GeographyHelper
                     {
                         verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, 0, zPos * triHeight);
                     }
-                    nodes[xPos, zPos] = new Node(xPos, zPos);
-                    nodes[xPos, zPos].Height = 0;
-                    nodes[xPos, zPos].Density = 0.1f;
+                    nodes[xPos, zPos] = new Node(xPos, zPos) { Height = 0, Density = 0.1f };
 
                 }
             }
@@ -428,7 +426,6 @@ namespace GeographyHelper
                             if (markers[j + 1] > x2) markers[j + 1] = x2;
                             for (int x = markers[j]; x < markers[j + 1]; x++)
                             {
-                                plates[i].Nodes.Add(nodes[x, z-1]);
                                 nodes[x, z - 1].Plate = plates[i];
                                 fillPlotCount++;
                             }
@@ -464,6 +461,7 @@ namespace GeographyHelper
                     int newZ = prevN.Z;
 
                     var n = prevN.Clone();
+                    prevN.Destroy();
                     n.X = newX;
                     n.Z = newZ;
                     newNodes[newX, newZ] = n;
@@ -494,7 +492,7 @@ namespace GeographyHelper
 
         // - takes a set of x,y coords and the heights to change them to
         // - set updateall to true to update all vertex colours
-        public void UpdateMesh(int[,] changes = null, float[] heights = null, bool updateAll = false)
+        public void UpdateMesh(float[] heights = null, bool updateAll = false)
         {
             Node[,] newNodes = new Node[width,height];
 
@@ -519,12 +517,14 @@ namespace GeographyHelper
                     if(checkZ < 0) { checkZ = height + checkZ; }
                     if (nodes[checkX,checkZ].Plate != prevN.Plate)
                     {
+                        
                         newNodes[j,i] = nodes[j,i].Clone();
+                        nodes[j, i].Destroy();
                         //Random chance of island starting to be generated
                         float chance = Random.Range(0.0f, 1.0f);
                         if(chance>0.98f)
                         {
-                            var v = new Volcano(j,i);
+                            var v = new Volcano(j,i,this);
                             v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
                             this.AddVolcano(v);
                         }
@@ -533,10 +533,10 @@ namespace GeographyHelper
                     var n = prevN.Clone();
                     n.X = newX;
                     n.Z = newZ;
-                    /*temp */ if(newX >= width || newZ >= height) {
-                        Debug.Log("");
-                    }
+
                     newNodes[newX, newZ] = n;
+
+                    prevN.Destroy();
 
                     int vertIndex = newX + (newZ * width);
                     if (newZ % 2 == 0)
@@ -569,11 +569,10 @@ namespace GeographyHelper
                     if (nodes[j, i].Plate == null)
                     {
                         nodes[j, i].Plate = p;
-                        p.Nodes.Add(nodes[j, i]);
                     }
                 }
             }
-
+            
             // end temp
 
             //Now run a particle desposition step for each volcano
@@ -595,7 +594,6 @@ namespace GeographyHelper
         private float defaultHeight = 5.0f;
         private int xSpeed = 0;
         private int zSpeed = 0;
-        private List<Node> nodes;
         private Crust crust;
 
         // non-field definitions
@@ -607,7 +605,6 @@ namespace GeographyHelper
             this.xSpeed = xSpeed;
             this.zSpeed = zSpeed;
             if (crust != null) { crust.AddPlate(this); }
-            this.Nodes = new List<Node>();
         }
         
 
@@ -625,11 +622,6 @@ namespace GeographyHelper
         {
             get { return this.zSpeed; }
             set { this.zSpeed = value; }
-        }
-        public List<Node> Nodes
-        {
-            get { return this.nodes; }
-            set { this.nodes = value; }
         }
         public Crust Crust
         {
@@ -688,6 +680,11 @@ namespace GeographyHelper
             n.Height = this.height;
             n.Density = this.density;
             return n;
+        }
+
+        public void Destroy()
+        {
+            this.plate = null;
         }
     }
 

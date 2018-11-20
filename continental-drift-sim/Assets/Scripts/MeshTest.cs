@@ -24,8 +24,10 @@ public class MeshTest : MonoBehaviour {
 
     float t;
     float coolingTime;
+    float moveSpeed;
 
     bool cooling;
+    bool move;
 
     private void Awake()
     {
@@ -38,7 +40,7 @@ public class MeshTest : MonoBehaviour {
 
     void Start()
     {
-        
+        moveSpeed = 1.0f;
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
     }
@@ -103,10 +105,20 @@ public class MeshTest : MonoBehaviour {
             testCrust.UpdateMesh(updateAll: true);
         }
 
-        if (Input.GetKeyDown("v"))
+        if (Input.GetKeyDown("b"))
         {
             testCrust.UpdateMesh();
         }
+
+        if (Input.GetKeyDown("v"))
+        {
+            InvokeRepeating("UpdateTestMesh", 0.0f, moveSpeed);
+        }
+    }
+
+    void UpdateTestMesh()
+    {
+        testCrust.UpdateMesh();
     }
 
     private void OnDrawGizmos()
