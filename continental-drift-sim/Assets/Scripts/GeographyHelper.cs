@@ -26,10 +26,11 @@ namespace GeographyHelper
         private Stage stage;
         private Plate[] plates;
         private Node[,] nodes; // array of nodes for the whole mesh, arranged in a matrix according to their positions
-        private Volcano[] volcanos;
+        private List<Volcano> volcanos;
 
 
         // non-field definitions
+        private float halfTriWidth;
         private int vertexCount;
         private int triCount;
         private Vector3[] verts;
@@ -55,7 +56,9 @@ namespace GeographyHelper
             if (stage == null) { this.stage = new CoolingStage(); }
             if (plates == null) { this.plates = new Plate[0]; }
             else { this.plates = plates; }
-            this.volcanos = new Volcano[0];
+            this.volcanos = new List<Volcano>();
+
+            this.halfTriWidth = triWidth / 2;
 
             /* Remove this when the temporary code in update mesh is removed --> */ this.AddPlate(p);
         }
@@ -124,12 +127,12 @@ namespace GeographyHelper
                 }
             }
         }
-        public Volcano[] Volcanos
+        public List<Volcano> Volcanos
         {
             get { return this.volcanos; }
             set{
                 this.volcanos = value;
-                for (int i=0; i<volcanos.Length; i++)
+                for (int i=0; i<volcanos.Count; i++)
                 {
                     this.volcanos[i].Crust = this;
                 }
@@ -154,16 +157,7 @@ namespace GeographyHelper
         public void AddVolcano(Volcano v)
         {
             v.Crust = this;
-
-            Volcano[] newVolcanos = new Volcano[volcanos.Length + 1];
-
-            for (int i=0; i<volcanos.Length; i++)
-            {
-                newVolcanos[i] = volcanos[i];
-            }
-            newVolcanos[Volcanos.Length] = v;
-
-            volcanos = newVolcanos;
+            volcanos.Add(v);
         }
 
         public void BuildMesh(bool addNoise)
@@ -181,7 +175,6 @@ namespace GeographyHelper
             int zPos;
 
             //Precalculating floats which are used in loop
-            float halfTriWidth = triWidth / 2;
             float halfWidth = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
             float seed = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
             //vertices
@@ -204,9 +197,13 @@ namespace GeographyHelper
                     {
                         verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, y, zPos * triHeight);
                     }
-                    nodes[xPos, zPos] = new Node(xPos, zPos);
-                    nodes[xPos, zPos].Height = y;
-                    nodes[xPos, zPos].Density = 0.1f;
+
+                    Node n = ObjectPooler.current.GetPooledNode();
+                    n.X = xPos;
+                    n.Z = zPos;
+                    n.Height = y;
+                    n.Density = 0.1f;
+                    nodes[xPos, zPos] = n;
 
                 }
             }
@@ -226,7 +223,12 @@ namespace GeographyHelper
                     {
                         verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, 0, zPos * triHeight);
                     }
-                    nodes[xPos, zPos] = new Node(xPos, zPos) { Height = 0, Density = 0.1f };
+                    Node nd = ObjectPooler.current.GetPooledNode();
+                    nd.X = xPos;
+                    nd.Z = zPos;
+                    nd.Height = 0;
+                    nd.Density = 0.1f;
+                    nodes[xPos, zPos] = nd;
 
                 }
             }
@@ -433,7 +435,7 @@ namespace GeographyHelper
                     }
                 }
             }
-            //Do a final run over all nodes to make sure each on is assigned to a plate
+            //Do a final run over all nodes to make sure each one is assigned to a plate
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
@@ -460,20 +462,23 @@ namespace GeographyHelper
                     int newX = prevN.X;
                     int newZ = prevN.Z;
 
-                    var n = prevN.Clone();
-                    prevN.Destroy();
-                    n.X = newX;
-                    n.Z = newZ;
-                    newNodes[newX, newZ] = n;
+                    Node nd = ObjectPooler.current.GetPooledNode();
+                    nd.Copy(prevN);
+                    nd.X = newX;
+                    nd.Z = newZ;
+                    newNodes[newX, newZ] = nd;
+
+                    ObjectPooler.current.ReturnNodeToPool(prevN);
+
 
                     int vertIndex = newX + (newZ * width);
                     if (newZ % 2 == 0)
                     {
-                        verts[vertIndex] = new Vector3(newX * triWidth, n.Height, newZ * triHeight);
+                        verts[vertIndex] = new Vector3(newX * triWidth, newNodes[newX, newZ].Height, newZ * triHeight);
                     }
                     else
                     {
-                        verts[vertIndex] = new Vector3((newX * triWidth) + (triWidth/2), n.Height, newZ * triHeight);
+                        verts[vertIndex] = new Vector3((newX * triWidth) + halfTriWidth, newNodes[newX, newZ].Height, newZ * triHeight);
                     }
 
                     float h = verts[vertIndex].y;
@@ -500,7 +505,6 @@ namespace GeographyHelper
             {
                 for (int j=0; j<width; j++)
                 {
-
                     //Get new x and y for prev node
                     Node prevN = nodes[j,i];
                     int dx = prevN.Plate.XSpeed;
@@ -511,46 +515,79 @@ namespace GeographyHelper
                     if (newZ < 0) { newZ = height + newZ; }
 
                     //Check if node is on a margin TEMPORARY
-                    int checkX = (j-dx) % (width - 1);
-                    if(checkX < 0) { checkX = width + checkX; }
-                    int checkZ = (i-dz) % (height - 1);
-                    if(checkZ < 0) { checkZ = height + checkZ; }
-                    if (nodes[checkX,checkZ].Plate != prevN.Plate)
+                    int checkFromX = (j-dx) % (width - 1);
+                    int checkToX = (j+dx) % (width - 1);
+                    if(checkFromX < 0) { checkFromX = width + checkFromX; }
+                    if(checkToX < 0) { checkToX = width + checkToX; }
+                    int checkFromZ = (i-dz) % (height - 1);
+                    int checkToZ = (i+dz) % (height - 1);
+                    if(checkFromZ < 0) { checkFromZ = height + checkFromZ; }
+                    if(checkToZ < 0) { checkToZ = height + checkToZ; }
+                    
+                    if (nodes[checkToX, checkToZ].Plate != prevN.Plate)
                     {
-                        
-                        newNodes[j,i] = nodes[j,i].Clone();
-                        nodes[j, i].Destroy();
-                        //Random chance of island starting to be generated
-                        float chance = Random.Range(0.0f, 1.0f);
-                        if(chance>0.98f)
+                        float differenceAngle = Angles.Similarity(dx, dz, nodes[checkToX, checkToZ].X, nodes[checkToX, checkToZ].Z);
+
+                        if (differenceAngle > 0.75f * Mathf.PI)
                         {
-                            var v = new Volcano(j,i,this);
+
+                        }
+
+                        Node nd = ObjectPooler.current.GetPooledNode();
+                        nd.Copy(nodes[j, i]);
+                        nd.X = j;
+                        nd.Z = i;
+                        if (newNodes[j, i] != null) // euuughghhh
+                        {
+                            ObjectPooler.current.ReturnNodeToPool(newNodes[j, i]);
+                        }
+                        newNodes[j, i] = nd;
+
+                        //Random chance of island starting to be generated
+                        /*float chance = Random.Range(0.0f, 1.0f);
+                        if(chance>0.99f)
+                        {
+                            Volcano v = ObjectPooler.current.GetPooledVolcano();
+                            v.X = j;
+                            v.Z = i;
                             v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
                             this.AddVolcano(v);
-                        }
+                        }*/
                     }
 
-                    var n = prevN.Clone();
+                    Node n = ObjectPooler.current.GetPooledNode();
+                    n.Copy(prevN);
                     n.X = newX;
                     n.Z = newZ;
-
+                    if (newNodes[newX, newZ] != null) // egughhhh
+                    {
+                        ObjectPooler.current.ReturnNodeToPool(newNodes[newX, newZ]);
+                    }
                     newNodes[newX, newZ] = n;
-
-                    prevN.Destroy();
+                    
 
                     int vertIndex = newX + (newZ * width);
                     if (newZ % 2 == 0)
                     {
-                        verts[vertIndex] = new Vector3(newX * triWidth, n.Height, newZ * triHeight);
+                        verts[vertIndex] = new Vector3(newX * triWidth, newNodes[newX, newZ].Height, newZ * triHeight);
                     }
                     else
                     {
-                        verts[vertIndex] = new Vector3((newX * triWidth) + (triWidth / 2), n.Height, newZ * triHeight);
+                        verts[vertIndex] = new Vector3((newX * triWidth) + halfTriWidth, newNodes[newX, newZ].Height, newZ * triHeight);
                     }
 
                     float h = verts[vertIndex].y;
                     float normalisedHeight = (h - baseHeight) / maxHeight;
                     colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                }
+            }
+
+            //release all the old nodes back to the pool
+            for (int i=0; i<height; i++)
+            {
+                for (int j=0; j<width; j++)
+                {
+                    ObjectPooler.current.ReturnNodeToPool(nodes[j,i]);
                 }
             }
 
@@ -562,9 +599,12 @@ namespace GeographyHelper
             {
                 for (int j = 0; j < width; j++)
                 {
-                    if(nodes[j, i] == null)
+                    if (nodes[j,i] == null)
                     {
+                        //EXTREMELY TEMPORARY FIX
                         nodes[j, i] = new Node(j, i);
+                        nodes[j, i].Density = 0.1f;
+                        nodes[j, i].Height = 100.0f;
                     }
                     if (nodes[j, i].Plate == null)
                     {
@@ -576,10 +616,16 @@ namespace GeographyHelper
             // end temp
 
             //Now run a particle desposition step for each volcano
-            for(int i=0; i<volcanos.Length; i++)
+            for(int i=0; i<volcanos.Count; i++)
             {
-                Volcano v = volcanos[i];
-                
+                //Increase age
+                volcanos[i].Age++;
+                //If it's at the end of it's lifetime, remove it from the list and return it to the volcano object pool
+                if(volcanos[i].Age >= 40)
+                {
+                    ObjectPooler.current.ReturnVolcanoToPool(volcanos[i]);
+                    volcanos.RemoveAt(i);
+                }
             }
 
             mesh.vertices = verts;
@@ -630,66 +676,8 @@ namespace GeographyHelper
         }
     }
 
-    public class Node
-    {
-        Plate plate;
-        float height;
-        float density;
-        int x, z;
 
-        public Node(int x, int z)
-        {
-            this.x = x;
-            this.z = z;
-        }
-
-        public Plate Plate
-        {
-            get { return this.plate; }
-            set { this.plate = value; }
-        }
-
-        public float Height
-        {
-            get { return this.height; }
-            set { this.height = value; }
-        }
-
-        public float Density
-        {
-            get { return this.density; }
-            set { this.density = value; }
-        }
-
-        public int X
-        {
-            get { return this.x; }
-            set { this.x = value; }
-        }
-
-        public int Z
-        {
-            get { return this.z; }
-            set { this.z = value; }
-        }
-
-        public Node Clone()
-        {
-            var n = new Node(this.x, this.z);
-            n.Plate = this.plate;
-            n.Height = this.height;
-            n.Density = this.density;
-            return n;
-        }
-
-        public void Destroy()
-        {
-            this.plate = null;
-        }
-    }
-
-
-    public class Volcano
+    public class Volcano : PoolableObject
     {
         int x,z;
         int age;
@@ -728,6 +716,12 @@ namespace GeographyHelper
         {
             get { return this.crust; }
             set { this.crust = value; }
+        }
+
+        public override void CleanObject()
+        {
+            materialRate = age = z = x = 0;
+            crust = null;
         }
     }
 

@@ -68,15 +68,17 @@ public class MeshTest : MonoBehaviour {
 
         if (Input.GetKeyDown("c"))
         {
-            Debug.Log(testCrust.Stage.GetType().ToString());
+            Debug.Log("you pressed c.");
             testCrust.BuildMesh(addNoise:true);
-
+            Debug.Log("we built this mesh on rosk and roll");
             testCrust.InitialiseCrust(10);
+            Debug.Log("crust init boi");
 
             for (int i = 0; i < testCrust.Plates.Length; i++)
             {
                 testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
                 testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
+                Debug.Log("you have a plate, and");
             }
         }
 
@@ -118,6 +120,7 @@ public class MeshTest : MonoBehaviour {
 
     void UpdateTestMesh()
     {
+        Debug.Log(testCrust.Stage.GetType().ToString());
         testCrust.UpdateMesh();
     }
 
