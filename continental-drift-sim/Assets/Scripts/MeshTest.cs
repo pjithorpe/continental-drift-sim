@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using GeographyHelper;
-using geo = GeographyHelper;
-
 public class MeshTest : MonoBehaviour {
 
     [SerializeField] public float triWidth = 1f;
