@@ -32,7 +32,7 @@ public class Crust
     private Vector3[] verts;
     private int[] tris;
     private Color[] colors;
-    private List<Node>[] movedNodes;
+    private List<Node>[,] movedNodes;
 
     /* Remove this when the temporary code in update mesh is removed --> */
     Plate p = new Plate(defaultHeight: 0.0f, xSpeed: 0, zSpeed: 0);
@@ -168,6 +168,7 @@ public class Crust
         triCount = (width - 1) * (height - 1) * 6;
         verts = new Vector3[vertexCount];
         nodes = new Node[width, height];
+        movedNodes = new List<Node>[width, height];
         tris = new int[triCount];
 
         //x and y (in number of triWidths/Lengths)
@@ -204,6 +205,7 @@ public class Crust
                 n.Height = y;
                 n.Density = 0.1f;
                 nodes[xPos, zPos] = n;
+                movedNodes[xPos, zPos] = new List<Node>();
 
             }
         }
@@ -229,7 +231,7 @@ public class Crust
                 nd.Height = 0;
                 nd.Density = 0.1f;
                 nodes[xPos, zPos] = nd;
-
+                movedNodes[xPos, zPos] = new List<Node>();
             }
         }
 
@@ -499,14 +501,12 @@ public class Crust
     // - set updateall to true to update all vertex colours
     public void UpdateMesh(float[] heights = null, bool updateAll = false)
     {
-        Node[,] newNodes = new Node[width, height];
-
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
                 //Get new x and y for prev node
-                Node prevN = nodes[j, i];
+                Node prevN = nodes[j,i];
                 int dx = prevN.Plate.XSpeed;
                 int dz = prevN.Plate.ZSpeed;
                 int newX = (prevN.X + dx) % (width - 1);
@@ -514,74 +514,158 @@ public class Crust
                 int newZ = (prevN.Z + dz) % (height - 1);
                 if (newZ < 0) { newZ = height + newZ; }
 
-                //Check if node is on a margin TEMPORARY
-                int checkFromX = (j - dx) % (width - 1);
-                int checkToX = (j + dx) % (width - 1);
-                if (checkFromX < 0) { checkFromX = width + checkFromX; }
-                if (checkToX < 0) { checkToX = width + checkToX; }
-                int checkFromZ = (i - dz) % (height - 1);
-                int checkToZ = (i + dz) % (height - 1);
-                if (checkFromZ < 0) { checkFromZ = height + checkFromZ; }
-                if (checkToZ < 0) { checkToZ = height + checkToZ; }
-
-                if (nodes[checkToX, checkToZ].Plate != prevN.Plate)
-                {
-                    float differenceAngle = Angles.Similarity(dx, dz, nodes[checkToX, checkToZ].X, nodes[checkToX, checkToZ].Z);
-
-                    if (differenceAngle > 0.75f * Mathf.PI)
-                    {
-
-                    }
-
-                    Node nd = ObjectPooler.current.GetPooledNode();
-                    nd.Copy(nodes[j, i]);
-                    nd.X = j;
-                    nd.Z = i;
-                    if (newNodes[j, i] != null) // euuughghhh
-                    {
-                        ObjectPooler.current.ReturnNodeToPool(newNodes[j, i]);
-                    }
-                    newNodes[j, i] = nd;
-
-                    //Random chance of island starting to be generated
-                    /*float chance = Random.Range(0.0f, 1.0f);
-                    if(chance>0.99f)
-                    {
-                        Volcano v = ObjectPooler.current.GetPooledVolcano();
-                        v.X = j;
-                        v.Z = i;
-                        v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
-                        this.AddVolcano(v);
-                    }*/
-                }
-
-                Node n = ObjectPooler.current.GetPooledNode();
-                n.Copy(prevN);
-                n.X = newX;
-                n.Z = newZ;
-                if (newNodes[newX, newZ] != null) // egughhhh
-                {
-                    ObjectPooler.current.ReturnNodeToPool(newNodes[newX, newZ]);
-                }
-                newNodes[newX, newZ] = n;
-
-
-                int vertIndex = newX + (newZ * width);
-                if (newZ % 2 == 0)
-                {
-                    verts[vertIndex] = new Vector3(newX * triWidth, newNodes[newX, newZ].Height, newZ * triHeight);
-                }
-                else
-                {
-                    verts[vertIndex] = new Vector3((newX * triWidth) + halfTriWidth, newNodes[newX, newZ].Height, newZ * triHeight);
-                }
-
-                float h = verts[vertIndex].y;
-                float normalisedHeight = (h - baseHeight) / maxHeight;
-                colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                //insert it at it's new position in movedNodes
+                movedNodes[newX, newZ].Add(prevN);
             }
         }
 
+        int emptyMovedNodesCount = 0;
+        int singleMovedNodesCount = 0;
+        int multipleMovedNodesCount = 0;
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                if (movedNodes[j,i].Count == 0)
+                {
+                    emptyMovedNodesCount++;
+                }
+                else if (movedNodes[j,i].Count == 1)
+                {
+                    singleMovedNodesCount++;
+                }
+                else
+                {
+                    multipleMovedNodesCount++;
+                }
+            }
+        }
+        Debug.Log(emptyMovedNodesCount.ToString());
+        Debug.Log(singleMovedNodesCount.ToString());
+        Debug.Log(multipleMovedNodesCount.ToString());
+
+        Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                if (movedNodes[j,i].Count != 0) // NO PLATE assigned to this space, copy the previous node that was here (i.e. do nothing)
+                {
+                    if (movedNodes[j,i].Count == 1) // ONE PLATE assigned to this space
+                    { 
+                        nodes[j,i].Copy(movedNodes[j,i][0]);
+                    }
+                    else // MORE THAN ONE PLATE assigned to this space
+                    {
+                        //plates are overlapping
+                        for (int k=0; k<movedNodes[j,i].Count; k++)
+                        {
+                            if (!singlePlateSpacesCounts.ContainsKey(movedNodes[j, i][k].Plate))
+                            {
+                                singlePlateSpacesCounts.Add(movedNodes[j, i][k].Plate, 0);
+                            }
+                        }
+
+                        //Now check to see what the closest space occupied by a single plate is to this point (only check for these plates)
+                        int searchDistance = 0;
+                        bool found = false;
+                        while (!found)
+                        {
+                            searchDistance++; // hexagon side length = searchDistance
+
+                            /* comment out hexagonal version for now
+                            //It is best to search in a hexagon outline shape. This algorithm will have to be horizontally flipped if working on an odd z value row
+
+                            bool diagnonalMove = true; //Start with a diagonal move when searching from an odd row
+                            if (i % 2 == 0)
+                            {
+                                diagnonalMove = false;
+                            }
+
+                            //start at the left corner and move diagonally up, then across to the right, then diagonally down to the right corner
+                            //at the same time, do the mirror opposite for the bottom half of the hexagon
+                            int x, z;
+                            x = -searchDistance;
+                            z = 0;
+
+                            // up/down from left corner
+                            for (int c=0; c<searchDistance; c++)
+                            {
+                                CheckSpaceAndUpdateDict(j+x, i+z, ref singlePlateSpacesCounts, ref found); //top half
+                                CheckSpaceAndUpdateDict(j+x, i-z, ref singlePlateSpacesCounts, ref found); //bottom half
+                                if (diagnonalMove) { x++; }
+                                z++;
+                                diagnonalMove = !diagnonalMove;
+                            }
+                            // across top/bottom
+                            for (int c=0; c<searchDistance; c++)
+                            {
+                                CheckSpaceAndUpdateDict(j + x, i + z, ref singlePlateSpacesCounts, ref found);
+                                CheckSpaceAndUpdateDict(j + x, i - z, ref singlePlateSpacesCounts, ref found);
+                                x++;
+                            }
+                            // down/up to right corner
+                            for (int c=0; c<searchDistance; c++)
+                            {
+                                CheckSpaceAndUpdateDict(j + x, i + z, ref singlePlateSpacesCounts, ref found);
+                                CheckSpaceAndUpdateDict(j + x, i - z, ref singlePlateSpacesCounts, ref found);
+                                if (diagnonalMove) { x++; }
+                                z--;
+                                diagnonalMove = !diagnonalMove;
+                            }
+                            */
+
+                            int x, z;
+                            x = -searchDistance;
+                            z = -searchDistance;
+                            for (int c=0; c<searchDistance; c++)
+                            {
+                                CheckSpaceAndUpdateDict(j + x, i + z, ref singlePlateSpacesCounts, ref found);
+                                CheckSpaceAndUpdateDict(j - x, i - z, ref singlePlateSpacesCounts, ref found);
+                                z++;
+                            }
+                            for (int c = 0; c < searchDistance; c++)
+                            {
+                                CheckSpaceAndUpdateDict(j + x, i + z, ref singlePlateSpacesCounts, ref found);
+                                CheckSpaceAndUpdateDict(j - x, i - z, ref singlePlateSpacesCounts, ref found);
+                                x++;
+                            }
+                        }
+
+                        Plate closestPlate = null;
+                        foreach (Plate plt in singlePlateSpacesCounts.Keys)
+                        {
+                            if (closestPlate == null || singlePlateSpacesCounts[plt] > singlePlateSpacesCounts[closestPlate])
+                            {
+                                closestPlate = plt;
+                            }
+                        }
+                        singlePlateSpacesCounts.Clear();
+
+                        nodes[j,i].Height = nodes[j,i].Height * 1.01f; //Increase height as a result of collision (naive)
+                        nodes[j,i].Plate = closestPlate;
+                    }
+
+                    //Apply changes to corresponding vertex
+                    int vertIndex = j + (i * width);
+                    if (i % 2 == 0)
+                    {
+                        verts[vertIndex] = new Vector3(j * triWidth, nodes[j,i].Height, i * triHeight);
+                    }
+                    else
+                    {
+                        verts[vertIndex] = new Vector3((j * triWidth) + halfTriWidth, nodes[j,i].Height, i * triHeight);
+                    }
+
+                    float h = verts[vertIndex].y;
+                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                }
+            }
+        }
+        
+
+        /*
         //release all the old nodes back to the pool
         for (int i = 0; i < height; i++)
         {
@@ -590,15 +674,15 @@ public class Crust
                 ObjectPooler.current.ReturnNodeToPool(nodes[j, i]);
             }
         }
+        */
 
-        nodes = newNodes;
-
-        // TEMPORARY! Do a final run over all nodes to make sure each on is assigned to a plate
+        
 
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
+                movedNodes[j,i].Clear();
                 if (nodes[j, i] == null)
                 {
                     //EXTREMELY TEMPORARY FIX
@@ -615,6 +699,7 @@ public class Crust
 
         // end temp
 
+        /*
         //Now run a particle desposition step for each volcano
         for (int i = 0; i < volcanos.Count; i++)
         {
@@ -627,9 +712,30 @@ public class Crust
                 volcanos.RemoveAt(i);
             }
         }
+        */
 
         mesh.vertices = verts;
         mesh.colors = colors;
+        mesh.RecalculateNormals();
         meshFilter.mesh = mesh;
     }
+
+    private void CheckSpaceAndUpdateDict(int x, int z, ref Dictionary<Plate, int> plateCountsDict, ref bool found)
+    {
+        x = x % (width - 1);
+        if (x < 0) { x = width + x; }
+        z = z % (height - 1);
+        if (z < 0) { z = height + z; }
+
+        if (movedNodes[x,z].Count == 1)
+        {
+            if (plateCountsDict.ContainsKey(movedNodes[x,z][0].Plate))
+            {
+                plateCountsDict[ movedNodes[x,z][0].Plate ]++;
+                found = true;
+            }
+        }
+    }
+
 }
+ 
