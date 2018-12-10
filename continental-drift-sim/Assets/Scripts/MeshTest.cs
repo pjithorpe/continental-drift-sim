@@ -55,7 +55,7 @@ public class MeshTest : MonoBehaviour {
         {
             testCrust.SeaLevel -= t;
             Debug.Log("Sea level is now: " + (testCrust.SeaLevel * 100).ToString() + "%");
-            testCrust.UpdateMesh(updateAll: true);
+            testCrust.UpdateMesh();
 
             if(testCrust.SeaLevel <= -0.1f)
             {
@@ -67,15 +67,23 @@ public class MeshTest : MonoBehaviour {
         {
             Debug.Log("you pressed c.");
             testCrust.BuildMesh(addNoise:true);
-            Debug.Log("we built this mesh on rosk and roll");
             testCrust.InitialiseCrust(10);
-            Debug.Log("crust init boi");
 
             for (int i = 0; i < testCrust.Plates.Length; i++)
             {
-                testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
-                testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
-                Debug.Log("you have a plate, and");
+                while(testCrust.Plates[i].XSpeed == 0 && testCrust.Plates[i].ZSpeed == 0)
+                {
+                    testCrust.Plates[i].XSpeed = Random.Range(-1, 2);
+                    testCrust.Plates[i].ZSpeed = Random.Range(-1, 2);
+                    if(Random.Range(0.0f,1.0f) > 0.5f)
+                    {
+                        testCrust.Plates[i].Type = PlateType.Oceanic;
+                    }
+                    else
+                    {
+                        testCrust.Plates[i].Type = PlateType.Continental;
+                    }
+                }
             }
         }
 
@@ -83,7 +91,7 @@ public class MeshTest : MonoBehaviour {
         {
             testCrust.SeaLevel += 0.05f;
             Debug.Log("Sea level is now: " + (testCrust.SeaLevel * 100).ToString() + "%");
-            testCrust.UpdateMesh(updateAll: true);
+            testCrust.UpdateMesh();
         }
 
         if (Input.GetKeyDown("space"))
@@ -101,7 +109,7 @@ public class MeshTest : MonoBehaviour {
                 testCrust.Stage = new CoolingStage();
             }
 
-            testCrust.UpdateMesh(updateAll: true);
+            testCrust.UpdateMesh();
         }
 
         if (Input.GetKeyDown("b"))
@@ -123,8 +131,12 @@ public class MeshTest : MonoBehaviour {
 
     private void OnDrawGizmos()
     {
-        /*
+        
         Gizmos.color = Color.red;
+        /*
+        Gizmos.DrawSphere(new Vector3(231, 150, 0), 0.5f);
+        */
+        /*
         if (m_points != null)
         {
             for (int i = 0; i < m_points.Count; i++)
@@ -132,7 +144,7 @@ public class MeshTest : MonoBehaviour {
                 Gizmos.DrawSphere(m_points[i], 0.2f);
             }
         }
-
+        
         if (m_edges != null)
         {
             Gizmos.color = Color.white;

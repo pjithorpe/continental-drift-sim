@@ -142,7 +142,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pooledNodeAmount: 1000000
-  pooledVolcanoAmount: 1000
+  pooledVolcanoAmount: 10000
 --- !u!4 &297046812
 Transform:
   m_ObjectHideFlags: 0

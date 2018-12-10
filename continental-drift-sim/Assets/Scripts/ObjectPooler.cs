@@ -7,7 +7,7 @@ public class ObjectPooler : MonoBehaviour
     public int pooledNodeAmount;
     public int pooledVolcanoAmount;
 
-    private Stack<Node> pooledNodes;
+    private Stack<CrustNode> pooledNodes;
     private Stack<Volcano> pooledVolcanos;
 
     void Awake()
@@ -17,19 +17,12 @@ public class ObjectPooler : MonoBehaviour
 
     void Start()
     {
-        pooledNodes = new Stack<Node>(pooledNodeAmount);
+        pooledNodes = new Stack<CrustNode>(pooledNodeAmount);
         for(int i=0; i<pooledNodeAmount; i++)
         {
-            Node node = new Node(0,0);
+            CrustNode node = new CrustNode(0,0);
             pooledNodes.Push(node);
         }
-
-        //temp
-        if (pooledNodes.Peek() != null)
-        {
-            Debug.Log("success!");
-            Debug.Log(pooledNodes.Peek().X);
-        }//endtemp
 
         pooledVolcanos = new Stack<Volcano>(pooledVolcanoAmount);
         for (int i=0; i<pooledVolcanoAmount; i++)
@@ -37,16 +30,9 @@ public class ObjectPooler : MonoBehaviour
             Volcano volcano = new Volcano(0,0,null);
             pooledVolcanos.Push(volcano);
         }
-
-        //temp
-        if (pooledVolcanos.Peek() != null)
-        {
-            Debug.Log("success!");
-            Debug.Log(pooledVolcanos.Peek().X);
-        }//endtemp
     }
 
-    public Node GetPooledNode()
+    public CrustNode GetPooledNode()
     {
         if(pooledNodes.Count > 0)
         {
@@ -75,7 +61,7 @@ public class ObjectPooler : MonoBehaviour
     }
 
 
-    public void ReturnNodeToPool(Node n)
+    public void ReturnNodeToPool(CrustNode n)
     {
         n.CleanObject();
         pooledNodes.Push(n);

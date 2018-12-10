@@ -1,13 +1,14 @@
 ﻿using UnityEngine;
 
-public class Node : PoolableObject
+public class CrustNode : PoolableObject
 {
     private Plate plate;
     private float height;
     private float density;
     private int x, z;
+    private bool isVirtual;
 
-    public Node(int x, int z)
+    public CrustNode(int x, int z)
     {
         this.x = x;
         this.z = z;
@@ -43,11 +44,18 @@ public class Node : PoolableObject
         set { this.z = value; }
     }
 
-    public void Copy(Node nodeToCopy)
+    public bool IsVirtual
+    {
+        get { return this.isVirtual; }
+        set { this.isVirtual = value; }
+    }
+
+    public void Copy(CrustNode nodeToCopy)
     {
         this.plate = nodeToCopy.Plate;
         this.height = nodeToCopy.Height;
         this.density = nodeToCopy.Density;
+        this.isVirtual = nodeToCopy.IsVirtual;
     }
 
     public override void CleanObject()
