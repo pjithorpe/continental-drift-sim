@@ -660,40 +660,16 @@ public class Crust
                     int newZ = (prevN.Z + dz) % height;
                     if (newZ < 0) { newZ = height + newZ; }
 
-                    //debug
-                    if(newX == 500 && newZ== 250)
-                    {
-                        prevN = crustNodes[j, i][n_i];
-                        dx = prevN.Plate.XSpeed;
-                        dz = prevN.Plate.ZSpeed;
-                        newX = (prevN.X + dx) % width;
-                        if (newX < 0) { newX = width + newX; }
-                        newZ = (prevN.Z + dz) % height;
-                        if (newZ < 0) { newZ = height + newZ; }
-                    }
-                    else if (newX == 999 && newZ == 499)
-                    {
-                        prevN = crustNodes[j, i][n_i];
-                        dx = prevN.Plate.XSpeed;
-                        dz = prevN.Plate.ZSpeed;
-                        newX = (prevN.X + dx) % width;
-                        if (newX < 0) { newX = width + newX; }
-                        newZ = (prevN.Z + dz) % height;
-                        if (newZ < 0) { newZ = height + newZ; }
-                    }
-                    //end debug
-
                     //insert it at it's new position in movedNodes
                     var movedNode = ObjectPooler.current.GetPooledNode();//dereference
                     movedNode.Copy(prevN);
-                    movedNode.X = newX;
-                    movedNode.Z = newZ;
                     movedCrustNodes[newX, newZ].AddLast(movedNode);
                 }
             }
         }
 
         //debug
+        /*
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
@@ -703,7 +679,7 @@ public class Crust
                     Debug.Log("More than 4 nodes in one movedCrustNodes space: x=" + j.ToString() + " y=" + i.ToString() + " | Count=" + movedCrustNodes[j,i].Count.ToString());
                 }
             }
-        }
+        }*/
         //end debug
     }
 
@@ -712,7 +688,7 @@ public class Crust
     {
         crustNodes[xPos, zPos][0].Height += crustNodes[xPos, zPos][0].Height * 0.5f;
 
-        //Random chance of volcanic eruption
+        //Random chance of new volcano
         float chance = Random.Range(0.0f, 1.0f);
         if (chance > 0.995f) // 1 in 200 chance
         {
@@ -746,37 +722,29 @@ public class Crust
             CollidePlates(xPos, zPos, ref types, ref singlePlateSpacesCounts);
         }
 
-        crustNodes[xPos, zPos][0] = movedCrustNodes[xPos, zPos].First.Value;
-        currentNode = movedCrustNodes[xPos, zPos].First.Next;
-        int listLength = movedCrustNodes[xPos, zPos].Count;
-        for (int k = 1; k < listLength; k++)
+        //Clear space in main array
+        int listLength = crustNodes[xPos, zPos].Count;
+        for (int i = 0; i < listLength; i++)
+        {
+            ObjectPooler.current.ReturnNodeToPool(crustNodes[xPos, zPos][i]);
+        }
+        crustNodes[xPos, zPos].Clear();
+        //crustNodes[xPos, zPos].TrimExcess();  <-- lower memory usage, higher processing cost
+
+        //Place moved nodes into freed space
+        currentNode = movedCrustNodes[xPos, zPos].First;
+        listLength = movedCrustNodes[xPos, zPos].Count;
+        for (int i = 0; i < listLength; i++)
         {
             //get rid of virtual nodes that are far below the surface
-            if (currentNode.Value.IsVirtual && currentNode.Value.Height < baseHeight - 1.0f)
+            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < baseHeight - 1.0f))
             {
-                ObjectPooler.current.ReturnNodeToPool(currentNode.Value);
-                var nodeToDelete = currentNode;
-                currentNode = currentNode.Next;
-                movedCrustNodes[xPos, zPos].Remove(nodeToDelete);
+                var movedCrustNode = ObjectPooler.current.GetPooledNode();
+                movedCrustNode.Copy(currentNode.Value);
+
+                crustNodes[xPos, zPos].Add(movedCrustNode);
             }
-            else
-            {
-                //Add node to main nodes array
-                if (k < crustNodes[xPos, zPos].Count)
-                {
-                    crustNodes[xPos, zPos][k] = currentNode.Value;
-                }
-                else
-                {
-                    crustNodes[xPos, zPos].Add(currentNode.Value);
-                }
-                currentNode = currentNode.Next;
-            }
-        }
-        //remove any excess
-        if (crustNodes[xPos, zPos].Count > listLength)
-        {
-            crustNodes[xPos, zPos].RemoveRange(listLength, crustNodes[xPos, zPos].Count - listLength);
+            currentNode = currentNode.Next;
         }
     }
 

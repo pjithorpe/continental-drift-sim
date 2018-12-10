@@ -52,6 +52,8 @@ public class CrustNode : PoolableObject
 
     public void Copy(CrustNode nodeToCopy)
     {
+        this.x = nodeToCopy.X;
+        this.z = nodeToCopy.Z;
         this.plate = nodeToCopy.Plate;
         this.height = nodeToCopy.Height;
         this.density = nodeToCopy.Density;
