@@ -652,19 +652,20 @@ public class Crust
                     CrustNode prevN = crustNodes[j, i][n_i];
                     int dx = prevN.Plate.XSpeed;
                     int dz = prevN.Plate.ZSpeed;
-                    int newX = (prevN.X + dx) % (width - 1);
+                    int newX = (prevN.X + dx) % width;
                     if (newX < 0) { newX = width + newX; }
-                    int newZ = (prevN.Z + dz) % (height - 1);
+                    int newZ = (prevN.Z + dz) % height;
                     if (newZ < 0) { newZ = height + newZ; }
 
+                    //debug
                     if(newX == 1 && newZ== 499)
                     {
                         prevN = crustNodes[j, i][n_i];
                         dx = prevN.Plate.XSpeed;
                         dz = prevN.Plate.ZSpeed;
-                        newX = (prevN.X + dx) % (width - 1);
+                        newX = (prevN.X + dx) % width;
                         if (newX < 0) { newX = width + newX; }
-                        newZ = (prevN.Z + dz) % (height - 1);
+                        newZ = (prevN.Z + dz) % height;
                         if (newZ < 0) { newZ = height + newZ; }
                     }
                     else if (newX == 999 && newZ == 499)
@@ -672,11 +673,12 @@ public class Crust
                         prevN = crustNodes[j, i][n_i];
                         dx = prevN.Plate.XSpeed;
                         dz = prevN.Plate.ZSpeed;
-                        newX = (prevN.X + dx) % (width - 1);
+                        newX = (prevN.X + dx) % width;
                         if (newX < 0) { newX = width + newX; }
-                        newZ = (prevN.Z + dz) % (height - 1);
+                        newZ = (prevN.Z + dz) % height;
                         if (newZ < 0) { newZ = height + newZ; }
                     }
+                    //end debug
 
                     //insert it at it's new position in movedNodes
                     prevN.X = newX;
