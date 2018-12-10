@@ -517,6 +517,8 @@ public class Crust
 
         MoveNodes(); // for every node, move it 
 
+        var bbb = movedCrustNodes[500, 250];
+
         //debug
         int emptyMovedNodesCount = 0;
         int singleMovedNodesCount = 0;
@@ -550,7 +552,7 @@ public class Crust
         {
             for (int j = 0; j < width; j++)
             {
-                if(j==231 && i==0)
+                if(j==500 && i==250)
                 {
                     var hehehe = 0;
                 }
@@ -587,7 +589,7 @@ public class Crust
         int numberOfNullNodes = 0;
         int numberOfNodesWithNoPlate = 0;
         int listLength;
-        for (int i = 0; i < height; i++)
+        for (int i = 0; i < height; i++)  
         {
             for (int j = 0; j < width; j++)
             {
@@ -597,6 +599,7 @@ public class Crust
                 for (int k = 0; k < listLength; k++)
                 {
                     var nodeToDelete = currentNode;
+                    ObjectPooler.current.ReturnNodeToPool(nodeToDelete.Value);
                     currentNode = currentNode.Next;
                     movedCrustNodes[j, i].Remove(nodeToDelete);
                 }
@@ -619,8 +622,8 @@ public class Crust
                 //endtemp
             }
         }
-        Debug.Log(numberOfNullNodes.ToString());
-        Debug.Log(numberOfNodesWithNoPlate.ToString());
+        Debug.Log("Null nodes = " + numberOfNullNodes.ToString());
+        Debug.Log("Nodes with no plate = " + numberOfNodesWithNoPlate.ToString());
 
 
         //Now run a particle desposition step for each volcano
@@ -658,7 +661,7 @@ public class Crust
                     if (newZ < 0) { newZ = height + newZ; }
 
                     //debug
-                    if(newX == 1 && newZ== 499)
+                    if(newX == 500 && newZ== 250)
                     {
                         prevN = crustNodes[j, i][n_i];
                         dx = prevN.Plate.XSpeed;
@@ -681,9 +684,11 @@ public class Crust
                     //end debug
 
                     //insert it at it's new position in movedNodes
-                    prevN.X = newX;
-                    prevN.Z = newZ;
-                    movedCrustNodes[newX, newZ].AddLast(prevN);
+                    var movedNode = ObjectPooler.current.GetPooledNode();//dereference
+                    movedNode.Copy(prevN);
+                    movedNode.X = newX;
+                    movedNode.Z = newZ;
+                    movedCrustNodes[newX, newZ].AddLast(movedNode);
                 }
             }
         }
@@ -705,7 +710,7 @@ public class Crust
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height -= crustNodes[xPos, zPos][0].Height * 0.2f;
+        crustNodes[xPos, zPos][0].Height += crustNodes[xPos, zPos][0].Height * 0.5f;
 
         //Random chance of volcanic eruption
         float chance = Random.Range(0.0f, 1.0f);
