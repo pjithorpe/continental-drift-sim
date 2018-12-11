@@ -515,9 +515,7 @@ public class Crust
     {
         var t = crustNodes[231, 0][0];
 
-        MoveNodes(); // for every node, move it 
-
-        var bbb = movedCrustNodes[500, 250];
+        MoveNodes(); // for every node, move it
 
         //debug
         int emptyMovedNodesCount = 0;
@@ -548,21 +546,18 @@ public class Crust
 
         PlateType[] types = new PlateType[5000];
         Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
+        int listLength;
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
-                if(j==500 && i==250)
-                {
-                    var hehehe = 0;
-                }
                 if (movedCrustNodes[j,i].Count == 0) // NO PLATE assigned to this space, start creating a rift
                 {
                     CreateNewCrustMaterial(j, i);
                 }
                 else if (movedCrustNodes[j,i].Count == 1) // ONE PLATE assigned to this space
                 {
-                    crustNodes[j,i][0].Copy(movedCrustNodes[j,i].First.Value);
+                    BasicCrustMove(j, i);
                 }
                 else // MORE THAN ONE PLATE assigned to this space
                 {
@@ -588,7 +583,6 @@ public class Crust
 
         int numberOfNullNodes = 0;
         int numberOfNodesWithNoPlate = 0;
-        int listLength;
         for (int i = 0; i < height; i++)  
         {
             for (int j = 0; j < width; j++)
@@ -633,8 +627,6 @@ public class Crust
         mesh.colors = colors;
         mesh.RecalculateNormals();
         meshFilter.mesh = mesh;
-
-        var x = crustNodes[231, 0][0];
     }
 
     private void MoveNodes()
@@ -661,15 +653,16 @@ public class Crust
                     if (newZ < 0) { newZ = height + newZ; }
 
                     //insert it at it's new position in movedNodes
-                    var movedNode = ObjectPooler.current.GetPooledNode();//dereference
-                    movedNode.Copy(prevN);
+                    var movedNode = ObjectPooler.current.GetPooledNode();
+                    movedNode.Copy(prevN); //dereference
+                    movedNode.X = newX;
+                    movedNode.Z = newZ;
                     movedCrustNodes[newX, newZ].AddLast(movedNode);
                 }
             }
         }
 
         //debug
-        /*
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
@@ -679,14 +672,15 @@ public class Crust
                     Debug.Log("More than 4 nodes in one movedCrustNodes space: x=" + j.ToString() + " y=" + i.ToString() + " | Count=" + movedCrustNodes[j,i].Count.ToString());
                 }
             }
-        }*/
+        }
         //end debug
     }
 
 
+
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height += crustNodes[xPos, zPos][0].Height * 0.5f;
+        crustNodes[xPos, zPos][0].Height -= crustNodes[xPos, zPos][0].Height * 0.05f;
 
         //Random chance of new volcano
         float chance = Random.Range(0.0f, 1.0f);
@@ -698,6 +692,22 @@ public class Crust
             v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
             this.AddVolcano(v);
         }
+    }
+
+    private void BasicCrustMove(int xPos, int zPos)
+    {
+        //Clear space in main array
+        int listLength = crustNodes[xPos, zPos].Count;
+        for (int k = 0; k < listLength; k++)
+        {
+            ObjectPooler.current.ReturnNodeToPool(crustNodes[xPos, zPos][k]);
+        }
+        crustNodes[xPos, zPos].Clear();
+
+        var movedCrustNode = ObjectPooler.current.GetPooledNode();
+        movedCrustNode.Copy(movedCrustNodes[xPos, zPos].First.Value);
+
+        crustNodes[xPos, zPos].Add(movedCrustNode);
     }
 
     private void PlateInteraction(int xPos, int zPos, ref PlateType[] types, ref Dictionary<Plate, int> singlePlateSpacesCounts)
