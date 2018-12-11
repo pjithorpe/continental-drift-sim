@@ -75,14 +75,14 @@ public class MeshTest : MonoBehaviour {
                 {
                     testCrust.Plates[i].XSpeed = Random.Range(-1, 2);
                     testCrust.Plates[i].ZSpeed = Random.Range(-1, 2);
-                    if(Random.Range(0.0f,1.0f) > 0.5f)
+                    /*if(Random.Range(0.0f,1.0f) > 0.5f)
                     {
                         testCrust.Plates[i].Type = PlateType.Oceanic;
                     }
                     else
-                    {
+                    {*/
                         testCrust.Plates[i].Type = PlateType.Continental;
-                    }
+                    //}
                 }
             }
         }

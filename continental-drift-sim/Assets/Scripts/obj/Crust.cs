@@ -188,7 +188,7 @@ public class Crust
 
                 float perlinNoise = Mathf.PerlinNoise(((xPos) / halfWidth) + seed, ((zPos) / halfWidth) + seed);
 
-                float y = BaseHeight + (maxHeight * perlinNoise);
+                float y = BaseHeight + ((maxHeight / 2) * perlinNoise);
 
                 if (zPos % 2 == 0)
                 {
@@ -510,14 +510,14 @@ public class Crust
 
 
 
-
+    PlateType[] types = new PlateType[5];
+    Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
     public void UpdateMesh()
     {
-        var t = crustNodes[231, 0][0];
-
-        MoveNodes(); // for every node, move it
+        MoveNodes(); // for every node, move it based on its plate's speed
 
         //debug
+        /*
         int emptyMovedNodesCount = 0;
         int singleMovedNodesCount = 0;
         int multipleMovedNodesCount = 0;
@@ -542,10 +542,9 @@ public class Crust
         Debug.Log("Empty moved nodes count: " + emptyMovedNodesCount.ToString());
         Debug.Log("Single moved nodes count: " + singleMovedNodesCount.ToString());
         Debug.Log("Multiple moved nodes count: " + multipleMovedNodesCount.ToString());
+        */
         //end debug
-
-        PlateType[] types = new PlateType[5000];
-        Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
+        
         int listLength;
         for (int i = 0; i < height; i++)
         {
@@ -561,6 +560,9 @@ public class Crust
                 }
                 else // MORE THAN ONE PLATE assigned to this space
                 {
+                    //clear plate searching dict
+                    singlePlateSpacesCounts.Clear();
+
                     PlateInteraction(j, i, ref types, ref singlePlateSpacesCounts);
                 }
 
@@ -599,6 +601,7 @@ public class Crust
                 }
 
                 //temp
+                /*
                 if (crustNodes[j, i] == null)
                 {
                     crustNodes[j, i] = new List<CrustNode>();
@@ -613,11 +616,12 @@ public class Crust
                     Debug.Log("null plate: " + j.ToString() + " " + i.ToString());
                     numberOfNodesWithNoPlate++;
                 }
+                */
                 //endtemp
             }
         }
-        Debug.Log("Null nodes = " + numberOfNullNodes.ToString());
-        Debug.Log("Nodes with no plate = " + numberOfNodesWithNoPlate.ToString());
+        /*Debug.Log("Null nodes = " + numberOfNullNodes.ToString());
+        Debug.Log("Nodes with no plate = " + numberOfNodesWithNoPlate.ToString());*/
 
 
         //Now run a particle desposition step for each volcano
@@ -635,10 +639,10 @@ public class Crust
         {
             for (int j = 0; j < width; j++)
             {
-                if (crustNodes[j, i].Count > 4)
+                /*if (crustNodes[j, i].Count > 4)
                 {
                     Debug.Log("More than 4 nodes in one crustNodes space: x=" + j.ToString() + " y=" + i.ToString());
-                }
+                }*/
 
                 //move the nodes
                 for (int n_i = 0; n_i < crustNodes[j, i].Count; n_i++)
@@ -663,7 +667,7 @@ public class Crust
         }
 
         //debug
-        for (int i = 0; i < height; i++)
+        /*for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
@@ -672,7 +676,7 @@ public class Crust
                     Debug.Log("More than 4 nodes in one movedCrustNodes space: x=" + j.ToString() + " y=" + i.ToString() + " | Count=" + movedCrustNodes[j,i].Count.ToString());
                 }
             }
-        }
+        }*/
         //end debug
     }
 
@@ -909,7 +913,7 @@ public class Crust
             }
 
             movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
-            movedCrustNodes[xPos, zPos].First.Value.Height = crustNodes[xPos, zPos][0].Height * 1.01f; //Increase height as a result of collision (naive)
+            movedCrustNodes[xPos, zPos].First.Value.Height = crustNodes[xPos, zPos][0].Height * 1.02f; //Increase height as a result of collision (naive)
         }
         //if C-O, oceanic subducts
         else
