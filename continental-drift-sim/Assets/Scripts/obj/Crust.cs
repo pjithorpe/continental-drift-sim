@@ -176,7 +176,7 @@ public class Crust
         int zPos;
 
         //Precalculating floats which are used in loop
-        float halfWidth = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
+        float perlinFraction = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
         float seed = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
         //vertices
         if (addNoise)
@@ -186,7 +186,7 @@ public class Crust
                 xPos = i % width;
                 zPos = i / width;
 
-                float perlinNoise = Mathf.PerlinNoise(((xPos) / halfWidth) + seed, ((zPos) / halfWidth) + seed);
+                float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + seed, ((zPos) / perlinFraction) + seed);
 
                 float y = BaseHeight + ((maxHeight / 2) * perlinNoise);
 
@@ -950,17 +950,35 @@ public class Crust
     }
 
 
+
     private void EruptVolcanos()
     {
-        for (int i = 0; i < volcanos.Count; i++)
+        for (int v = 0; v < volcanos.Count; v++)
         {
             //Increase age
-            volcanos[i].Age++;
+            volcanos[v].Age++;
             //If it's at the end of it's lifetime, remove it from the list and return it to the volcano object pool
-            if (volcanos[i].Age >= 40)
+            if (volcanos[v].Age >= 40)
             {
-                ObjectPooler.current.ReturnVolcanoToPool(volcanos[i]);
-                volcanos.RemoveAt(i);
+                ObjectPooler.current.ReturnVolcanoToPool(volcanos[v]);
+                volcanos.RemoveAt(v);
+            }
+            else //otherwise, do eruption (particle deposition)
+            {
+                int currentX = volcanos[v].X;
+                int currentZ = volcanos[v].Z;
+                for (int rock = 0; rock < volcanos[v].MaterialRate; rock++)
+                {
+                    int directionDecision = Random.Range(0,4);
+                    switch (directionDecision)
+                    {
+                        case 0: currentX++; break;
+                        case 1: currentX--; break;
+                        case 2: currentZ++; break;
+                        case 3: currentZ--; break;
+                    }
+                    
+                }
             }
         }
     }
@@ -981,5 +999,4 @@ public class Crust
             }
         }
     }
-
 }
