@@ -32,7 +32,7 @@ public class MeshTest : MonoBehaviour {
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 20.0f, seaLevel: 1.0f);
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 2.0f, seaLevel: 1.0f);
     }
 
     void Start()
@@ -73,8 +73,8 @@ public class MeshTest : MonoBehaviour {
             {
                 while(testCrust.Plates[i].XSpeed == 0 && testCrust.Plates[i].ZSpeed == 0)
                 {
-                    testCrust.Plates[i].XSpeed = Random.Range(-1, 2);
-                    testCrust.Plates[i].ZSpeed = Random.Range(-1, 2);
+                    testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
+                    testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
                     /*if(Random.Range(0.0f,1.0f) > 0.5f)
                     {
                         testCrust.Plates[i].Type = PlateType.Oceanic;
@@ -125,7 +125,6 @@ public class MeshTest : MonoBehaviour {
 
     void UpdateTestMesh()
     {
-        Debug.Log(testCrust.Stage.GetType().ToString());
         testCrust.UpdateMesh();
     }
 

@@ -188,7 +188,7 @@ public class Crust
 
                 float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
 
-                float y = BaseHeight + ((maxHeight / 2) * perlinNoise);
+                float y = BaseHeight + (maxHeight * perlinNoise);
 
                 if (zPos % 2 == 0)
                 {
@@ -684,17 +684,20 @@ public class Crust
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height -= crustNodes[xPos, zPos][0].Height * 0.05f;
+        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.6f;
 
-        //Random chance of new volcano
-        float chance = Random.Range(0.0f, 1.0f);
-        if (chance > 0.995f) // 1 in 200 chance
+        //If the rift has become deep enough, random chance of new volcano
+        if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.2f)
         {
-            Volcano v = ObjectPooler.current.GetPooledVolcano();
-            v.X = xPos;
-            v.Z = zPos;
-            v.MaterialRate = Random.Range(0, 6); //How many rocks get thrown out of the volcano each frame
-            this.AddVolcano(v);
+            float chance = Random.Range(0.0f, 1.0f);
+            if (chance > 0.999f) // 1 in 1000 chance
+            {
+                Volcano v = ObjectPooler.current.GetPooledVolcano();
+                v.X = xPos;
+                v.Z = zPos;
+                v.MaterialRate = Random.Range(20, 60); //How many rocks get thrown out of the volcano each frame
+                this.AddVolcano(v);
+            }
         }
     }
 
@@ -951,9 +954,10 @@ public class Crust
 
 
 
+    //Implemented using particle deposition
     private void EruptVolcanos()
     {
-		float rockSize = 0.1f;
+		float rockSize = maxHeight / 10f;
 		float heightSimilarityEpsilon = rockSize * 0.45f; //if heights are this distance away from eachother, they will be considered equal
         for (int v = 0; v < volcanos.Count; v++)
         {
@@ -976,51 +980,161 @@ public class Crust
 					//choose a random drop point within volcano's radius
 					float dropPointAngle = 2 * Mathf.PI * Random.Range(0.0f, 1.0f);
 					float dropPointDistance = 3 * Random.Range(0.0f, 1.0f);
-					float dropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
-					float dropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
-					int currentX = Mathf.RoundToInt(vol.X + dropX);
-					int currentZ = Mathf.RoundToInt(vol.Z + dropZ);
+					float relativeDropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
+					float relativeDropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
+                    int dropX = Mathf.RoundToInt(vol.X + relativeDropX);
+                    int dropZ = Mathf.RoundToInt(vol.Z + relativeDropZ);
+
+                    int currentX = dropX % width;
+                    int currentZ = dropZ % height;
+                    if (currentX < 0) { currentX = width + currentX; }
+                    if (currentZ < 0) { currentZ = height + currentZ; }
 
 					int noiseIndex = rocksThrown + rock;
 					searchRange = (int)(3 * vol.NoiseArray[noiseIndex]) + 1; //should give range values from 1 to 3 ( and 4 in some rare cases)
 					elevationThreshold = (int)(2 * vol.NoiseArray[vol.NoiseArray.Length - noiseIndex]); //should give values 0 or 1 (2 rarely)
 
-					bool atRest = false;
-					while (!atRest)
+                    //rock rolling loop
+					bool stable = false;
+                    while (!stable)
 					{
 						for(int range=1; range<=searchRange; range++)
 						{
-							//do hexagon search and randomise side priority
-							int side = Random.Range(0,3);
-							int searchX = -range;
-							int searchZ = 0;
-							for(int s = 0; s<3; s++)
+                            //do hexagon search and randomise side priority
+
+                            bool diagnonalMove = true; //Start with a diagonal move when searching from an odd row
+                            if (currentZ % 2 == 0)
+                            {
+                                diagnonalMove = false;
+                            }
+
+                            int side = Random.Range(0,3);
+                            int searchX, searchZ;
+                            switch (side) //Move search markers
+                            {
+                                case 0:
+                                    searchX = -range; searchZ = 0;
+                                    break;
+                                case 1:
+                                    if (diagnonalMove) { searchX = ((range - 1)/2 + 1) - range; }
+                                    else { searchX = range/2 - range; }
+                                    searchZ = range;
+                                    break;
+                                default: //case 2
+                                    if (diagnonalMove) { searchX = range / 2 - range; }
+                                    else { searchX = ((range - 1) / 2 + 1) - range;  }
+                                    searchZ = range;
+                                    break;
+                            }
+
+                            stable = true;
+                            for (int s = 0; s<3; s++) //3 sets of parallel sides
 							{
-								for(int c = 0; c < range; c++)
+                                for (int c = 0; c < range; c++)
 								{
-									switch (side)
+                                    var currentNode = crustNodes[currentX, currentZ][0];
+                                    int crustIndexX = (currentX + searchX) % width;
+                                    if (crustIndexX < 0) { crustIndexX = width + crustIndexX; }
+                                    if (Random.value > 0.5f)//Randomise which side to check first (we don't want to bias the drops)
+                                    {
+                                        int crustIndexZ = (currentZ + searchZ) % height;
+                                        if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
+                                        var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
+
+                                        if (currentNode.Height - topHexagonNode.Height > heightSimilarityEpsilon)
+                                        {
+                                            currentX = crustIndexX;
+                                            currentZ = crustIndexZ;
+                                            stable = false;
+                                        }
+                                        else
+                                        {
+                                            crustIndexZ = (currentZ - searchZ) % height;
+                                            if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
+                                            var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
+
+                                            if (currentNode.Height - botHexagonNode.Height > heightSimilarityEpsilon)
+                                            {
+                                                currentX = crustIndexX;
+                                                currentZ = crustIndexZ;
+                                                stable = false;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        int crustIndexZ = (currentZ - searchZ) % height;
+                                        if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
+                                        var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
+
+                                        if (currentNode.Height - botHexagonNode.Height > heightSimilarityEpsilon)
+                                        {
+                                            currentX = crustIndexX;
+                                            currentZ = crustIndexZ;
+                                            stable = false;
+                                        }
+                                        else
+                                        {
+                                            crustIndexZ = (currentZ + searchZ) % height;
+                                            if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
+                                            var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
+
+                                            if (currentNode.Height - topHexagonNode.Height > heightSimilarityEpsilon)
+                                            {
+                                                currentX = crustIndexX;
+                                                currentZ = crustIndexZ;
+                                                stable = false;
+                                            }
+                                        }
+                                    }
+
+                                    switch (side) //Move search markers
 									{
-										case 0: break;
-										case 1: break;
-										case 2: break;
+										case 0:
+                                            if (diagnonalMove) { searchX++; }
+                                            searchZ++;
+                                            diagnonalMove = !diagnonalMove;
+                                            break;
+										case 1:
+                                            searchX++;
+                                            break;
+										case 2:
+                                            if (diagnonalMove) { searchX++; }
+                                            searchZ--;
+                                            diagnonalMove = !diagnonalMove;
+                                            break;
 									}
 								}
 
+                                if (stable) { break; }
 								side++;
-								if(side > 2) { side = 0; }
+								if(side > 2)
+                                {
+                                    side = 0;
+                                    searchX = -range;
+                                    searchZ = 0;
+                                }
 							}
+
+                            if (stable) { break; }
 						}
 					}
+
+                    //drop the rock
+                    crustNodes[currentX, currentZ][0].Height += rockSize;
                 }
             }
         }
     }
 
+
+
+
     private void CheckSpaceAndUpdateDict(int x, int z, ref Dictionary<Plate, int> plateCountsDict, ref bool found)
     {
-        x = x % (width - 1);
+        x = x % width;
         if (x < 0) { x = width + x; }
-        z = z % (height - 1);
+        z = z % height;
         if (z < 0) { z = height + z; }
 
         if (movedCrustNodes[x,z].Count == 1 && movedCrustNodes[x, z].First.Value.Plate != null)
