@@ -177,7 +177,7 @@ public class Crust
 
         //Precalculating floats which are used in loop
         float perlinFraction = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
-        float seed = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
+        float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
         //vertices
         if (addNoise)
         {
@@ -186,7 +186,7 @@ public class Crust
                 xPos = i % width;
                 zPos = i / width;
 
-                float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + seed, ((zPos) / perlinFraction) + seed);
+                float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
 
                 float y = BaseHeight + ((maxHeight / 2) * perlinNoise);
 
@@ -965,19 +965,15 @@ public class Crust
             }
             else //otherwise, do eruption (particle deposition)
             {
-                int currentX = volcanos[v].X;
-                int currentZ = volcanos[v].Z;
+				int rocksThrown = volcanos[v].Age * volcanos[v].MaterialRate;
                 for (int rock = 0; rock < volcanos[v].MaterialRate; rock++)
                 {
-                    int directionDecision = Random.Range(0,4);
-                    switch (directionDecision)
-                    {
-                        case 0: currentX++; break;
-                        case 1: currentX--; break;
-                        case 2: currentZ++; break;
-                        case 3: currentZ--; break;
-                    }
-                    
+					float dropPointAngle = 2 * Mathf.PI * Random.Range(0.0f, 1.0f);
+					float dropPointDistance = 6 * Random.Range(0.0f, 1.0f);
+					float dropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
+					float dropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
+					int currentX = volcanos[v].X + dropX;
+					int currentZ = volcanos[v].Z + dropZ;
                 }
             }
         }

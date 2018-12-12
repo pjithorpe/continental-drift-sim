@@ -7,6 +7,7 @@ public class Volcano : PoolableObject
     int age;
     int materialRate;
     Crust crust;
+	int[] noiseArray;
 
     static int MAX_MATERIAL_PRODUCED = 400; // maximum material produced = maximum volcano age * maximum material rate
 
@@ -16,6 +17,7 @@ public class Volcano : PoolableObject
         this.z = z;
         this.crust = crust;
         this.age = 0;
+		this.noiseArray = GenerateNoise();
     }
 
     public int X
@@ -43,6 +45,11 @@ public class Volcano : PoolableObject
         get { return this.crust; }
         set { this.crust = value; }
     }
+	public int[] NoiseArray
+	{
+		get { return this.noiseArray; }
+		set { this.noiseArray = value; }
+	}
 
     public override void CleanObject()
     {
@@ -54,10 +61,16 @@ public class Volcano : PoolableObject
     {
         int[] noiseArray = new int[MAX_MATERIAL_PRODUCED];
 
-        int offset = Random.Range(0, 100);
+		float perlinFactor = 1.0f;
+		int offset = Random.Range(0, 100) + Random.Range(0.1f, 0.99f);
         for(int noiseIndex = 0; noiseIndex < noiseArray.Length; noiseIndex++)
         {
-            noiseArray[noiseIndex] = (int)Mathf.PerlinNoise(0, 1);
+			float noiseX = noiseIndex * perlinFactor;
+			if(noiseX = (int)noiseX)
+			{
+				noiseX += 0.00001f;
+			}
+            noiseArray[noiseIndex] = (int)Mathf.PerlinNoise(noiseX, offset);
         }
 
         return noiseArray;
