@@ -953,27 +953,64 @@ public class Crust
 
     private void EruptVolcanos()
     {
+		float rockSize = 0.1f;
+		float heightSimilarityEpsilon = rockSize * 0.45f; //if heights are this distance away from eachother, they will be considered equal
         for (int v = 0; v < volcanos.Count; v++)
         {
+			var vol = volcanos[v];
             //Increase age
-            volcanos[v].Age++;
+            vol.Age++;
             //If it's at the end of it's lifetime, remove it from the list and return it to the volcano object pool
-            if (volcanos[v].Age >= 40)
+            if (vol.Age >= 40)
             {
-                ObjectPooler.current.ReturnVolcanoToPool(volcanos[v]);
+                ObjectPooler.current.ReturnVolcanoToPool(vol);
                 volcanos.RemoveAt(v);
             }
             else //otherwise, do eruption (particle deposition)
             {
-				int rocksThrown = volcanos[v].Age * volcanos[v].MaterialRate;
-                for (int rock = 0; rock < volcanos[v].MaterialRate; rock++)
+				int rocksThrown = vol.Age * vol.MaterialRate;
+				int searchRange = 0; //higher search radius will make shallower slopes
+				int elevationThreshold = 0; //higher elevation threshold than 1 will make very steep slopes
+                for (int rock = 0; rock < vol.MaterialRate; rock++)
                 {
+					//choose a random drop point within volcano's radius
 					float dropPointAngle = 2 * Mathf.PI * Random.Range(0.0f, 1.0f);
-					float dropPointDistance = 6 * Random.Range(0.0f, 1.0f);
+					float dropPointDistance = 3 * Random.Range(0.0f, 1.0f);
 					float dropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
 					float dropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
-					int currentX = volcanos[v].X + dropX;
-					int currentZ = volcanos[v].Z + dropZ;
+					int currentX = Mathf.RoundToInt(vol.X + dropX);
+					int currentZ = Mathf.RoundToInt(vol.Z + dropZ);
+
+					int noiseIndex = rocksThrown + rock;
+					searchRange = (int)(3 * vol.NoiseArray[noiseIndex]) + 1; //should give range values from 1 to 3 ( and 4 in some rare cases)
+					elevationThreshold = (int)(2 * vol.NoiseArray[vol.NoiseArray.Length - noiseIndex]); //should give values 0 or 1 (2 rarely)
+
+					bool atRest = false;
+					while (!atRest)
+					{
+						for(int range=1; range<=searchRange; range++)
+						{
+							//do hexagon search and randomise side priority
+							int side = Random.Range(0,3);
+							int searchX = -range;
+							int searchZ = 0;
+							for(int s = 0; s<3; s++)
+							{
+								for(int c = 0; c < range; c++)
+								{
+									switch (side)
+									{
+										case 0: break;
+										case 1: break;
+										case 2: break;
+									}
+								}
+
+								side++;
+								if(side > 2) { side = 0; }
+							}
+						}
+					}
                 }
             }
         }
@@ -990,7 +1027,7 @@ public class Crust
         {
             if (plateCountsDict.ContainsKey(movedCrustNodes[x,z].First.Value.Plate))
             {
-                plateCountsDict[ movedCrustNodes[x,z].First.Value.Plate ]++;
+                plateCountsDict[movedCrustNodes[x,z].First.Value.Plate]++;
                 found = true;
             }
         }

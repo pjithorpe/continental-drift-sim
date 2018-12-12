@@ -62,11 +62,11 @@ public class Volcano : PoolableObject
         int[] noiseArray = new int[MAX_MATERIAL_PRODUCED];
 
 		float perlinFactor = 1.0f;
-		int offset = Random.Range(0, 100) + Random.Range(0.1f, 0.99f);
+		float offset = Random.Range(0, 100) + Random.Range(0.1f, 0.99f);
         for(int noiseIndex = 0; noiseIndex < noiseArray.Length; noiseIndex++)
         {
 			float noiseX = noiseIndex * perlinFactor;
-			if(noiseX = (int)noiseX)
+			if(noiseX == (int)noiseX)
 			{
 				noiseX += 0.00001f;
 			}
