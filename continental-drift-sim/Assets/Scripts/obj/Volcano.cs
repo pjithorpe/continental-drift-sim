@@ -8,7 +8,7 @@ public class Volcano : PoolableObject
     int materialRate;
 	int[] noiseArray;
 
-    static int MAX_MATERIAL_PRODUCED = 1000; // maximum material produced = maximum volcano age * maximum material rate
+    static int MAX_MATERIAL_PRODUCED = 1500; // maximum material produced = maximum volcano age * maximum material rate
 
     public Volcano(int x, int z, Crust crust)
     {

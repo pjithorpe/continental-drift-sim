@@ -573,7 +573,7 @@ public class Crust
                     //clear plate searching dict
                     singlePlateSpacesCounts.Clear();
 
-                    PlateInteraction(j, i, ref types, ref singlePlateSpacesCounts);
+                    PlateInteraction(j, i, ref singlePlateSpacesCounts);
                 }
 
                 //Apply changes to corresponding vertex
@@ -589,12 +589,20 @@ public class Crust
 
                 float h = verts[vertIndex].y;
                 float normalisedHeight = (h - baseHeight) / maxHeight;
-                colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                //debug
+                if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
+                {
+                    colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
+                }
+                else
+                {
+                    colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
+                }
+                //end debug
+                //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
             }
         }
 
-        int numberOfNullNodes = 0;
-        int numberOfNodesWithNoPlate = 0;
         for (int i = 0; i < height; i++)  
         {
             for (int j = 0; j < width; j++)
@@ -636,7 +644,7 @@ public class Crust
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
         EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2);
-        EruptVolcanos(stratoVolcanos, 25, 3, 2, 1);
+        EruptVolcanos(stratoVolcanos, 25, 3, 2, 1, updateCoords: true);
 
         mesh.vertices = verts;
         mesh.colors = colors;
@@ -728,7 +736,7 @@ public class Crust
         crustNodes[xPos, zPos].Add(movedCrustNode);
     }
 
-    private void PlateInteraction(int xPos, int zPos, ref PlateType[] types, ref Dictionary<Plate, int> singlePlateSpacesCounts)
+    private void PlateInteraction(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts)
     {
         //plates are overlapping, check which should subduct underneath (virtual), and which should be the surface (non-virtual)
 
@@ -747,7 +755,7 @@ public class Crust
 
         if (!oneNonVirtual) //multiple non-virtual nodes
         {
-            CollidePlates(xPos, zPos, ref types, ref singlePlateSpacesCounts);
+            CollidePlates(xPos, zPos, ref singlePlateSpacesCounts);
         }
 
         //Clear space in main array
@@ -776,14 +784,13 @@ public class Crust
         }
     }
 
-    private void CollidePlates(int xPos, int zPos, ref PlateType[] types, ref Dictionary<Plate, int> singlePlateSpacesCounts)
+    private void CollidePlates(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts)
     {
         bool hasOceanic = false, hasContinental = false, hasMultipleOc = false, hasMultipleCo = false;
         var currentNode = movedCrustNodes[xPos, zPos].First;
         for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
         {
-            types[k] = currentNode.Value.Plate.Type;
-            if (types[k] == PlateType.Oceanic)
+            if (currentNode.Value.Plate.Type == PlateType.Oceanic)
             {
                 if (hasOceanic != true) { hasOceanic = true; }
                 else { hasMultipleOc = true; }
@@ -946,7 +953,7 @@ public class Crust
                 if (movedCrustNodes[xPos, zPos].First.Value.Plate.Type == PlateType.Oceanic) //O,C
                 {
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - (maxHeight * 0.05f); //subduct downwards
+                    movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - (maxHeight * 0.1f); //subduct downwards
                     subductedHeight = movedCrustNodes[xPos, zPos].First.Value.Height;
 
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = false;
@@ -959,15 +966,15 @@ public class Crust
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
                     
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - (maxHeight * 0.05f); //subduct downwards
+                    movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - (maxHeight * 0.1f); //subduct downwards
                     subductedHeight = movedCrustNodes[xPos, zPos].Last.Value.Height;
                 }
 
                 //If the subducting plate is deep enough, random chance of new volcano
-                if (crustNodes[xPos, zPos][0].Height < baseHeight * 0.2f)
+                if (movedCrustNodes[xPos, zPos].Last.Value.Height < baseHeight * 0.3f)
                 {
                     float chance = Random.Range(0.0f, 1.0f);
-                    if (chance > 0.9995f)
+                    if (chance > 0.999f)
                     {
                         Volcano v = ObjectPooler.current.GetPooledVolcano();
                         v.X = xPos;
@@ -983,7 +990,7 @@ public class Crust
 
 
     //Implemented using particle deposition
-    private void EruptVolcanos(List<Volcano> volcanos, int maxAge, int maxSearchRange, int maxElevationThreshold, int dropZoneRadius)
+    private void EruptVolcanos(List<Volcano> volcanos, int maxAge, int maxSearchRange, int maxElevationThreshold, int dropZoneRadius, bool updateCoords = false)
     {
         for (int v = 0; v < volcanos.Count; v++)
         {
@@ -1154,6 +1161,17 @@ public class Crust
                     //drop the rock
                     crustNodes[currentX, currentZ][0].Height += rockSize;
                 }
+            }
+
+            if (updateCoords)
+            {
+                vol.X = (vol.X + crustNodes[vol.X, vol.Z][0].Plate.XSpeed) % width;
+                if (vol.X < 0) { vol.X = width + vol.X; }
+            }
+            else
+            {
+                vol.Z = (vol.Z + crustNodes[vol.X, vol.Z][0].Plate.ZSpeed) % height;
+                if (vol.Z < 0) { vol.Z = height + vol.Z; }
             }
         }
     }
