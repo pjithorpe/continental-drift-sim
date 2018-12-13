@@ -22,7 +22,8 @@ public class Crust
     private Stage stage;
     private Plate[] plates;
     private List<CrustNode>[,] crustNodes; // array of nodes for the whole mesh, arranged in a matrix according to their positions
-    private List<Volcano> volcanos;
+    private List<Volcano> stratoVolcanos;
+    private List<Volcano> shieldVolcanos;
 
 
     // non-field definitions
@@ -33,6 +34,10 @@ public class Crust
     private int[] tris;
     private Color[] colors;
     private LinkedList<CrustNode>[,] movedCrustNodes;
+
+    //volcanos
+    float rockSize;
+    float heightSimilarityEpsilon; //in the particle deposition algoorithm, if heights are this distance away from eachother, they will be considered equal
 
     /* Remove this when the temporary code in update mesh is removed --> */
     Plate p = new Plate(defaultHeight: 0.0f, xSpeed: 0, zSpeed: 0);
@@ -54,9 +59,13 @@ public class Crust
         if (stage == null) { this.stage = new CoolingStage(); }
         if (plates == null) { this.plates = new Plate[0]; }
         else { this.plates = plates; }
-        this.volcanos = new List<Volcano>();
+        this.shieldVolcanos = new List<Volcano>();
+        this.stratoVolcanos = new List<Volcano>();
 
         this.halfTriWidth = triWidth / 2;
+
+        this.rockSize = maxHeight / 10f;
+        this.heightSimilarityEpsilon = rockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
         this.AddPlate(p);
@@ -126,17 +135,15 @@ public class Crust
             }
         }
     }
-    public List<Volcano> Volcanos
+    public List<Volcano> ShieldVolcanos
     {
-        get { return this.volcanos; }
-        set
-        {
-            this.volcanos = value;
-            for (int i = 0; i < volcanos.Count; i++)
-            {
-                this.volcanos[i].Crust = this;
-            }
-        }
+        get { return this.shieldVolcanos; }
+        set { this.shieldVolcanos = value; }
+    }
+    public List<Volcano> StratoVolcanos
+    {
+        get { return this.stratoVolcanos; }
+        set { this.stratoVolcanos = value; }
     }
 
     public void AddPlate(Plate p)
@@ -154,10 +161,13 @@ public class Crust
         plates = newPlates;
     }
 
-    public void AddVolcano(Volcano v)
+    public void AddShieldVolcano(Volcano v)
     {
-        v.Crust = this;
-        volcanos.Add(v);
+        shieldVolcanos.Add(v);
+    }
+    public void AddStratoVolcano(Volcano v)
+    {
+        stratoVolcanos.Add(v);
     }
 
     public void BuildMesh(bool addNoise)
@@ -624,8 +634,9 @@ public class Crust
         Debug.Log("Nodes with no plate = " + numberOfNodesWithNoPlate.ToString());*/
 
 
-        //Now run a particle desposition step for each volcano
-        EruptVolcanos();
+        //Now run a particle desposition step for each volcano in each of the lists of volcanos
+        EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2);
+        EruptVolcanos(stratoVolcanos, 25, 3, 2, 1);
 
         mesh.vertices = verts;
         mesh.colors = colors;
@@ -690,13 +701,13 @@ public class Crust
         if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.2f)
         {
             float chance = Random.Range(0.0f, 1.0f);
-            if (chance > 0.999f) // 1 in 1000 chance
+            if (chance > 0.995f) // 1 in 1000 chance
             {
                 Volcano v = ObjectPooler.current.GetPooledVolcano();
                 v.X = xPos;
                 v.Z = zPos;
-                v.MaterialRate = Random.Range(20, 60); //How many rocks get thrown out of the volcano each frame
-                this.AddVolcano(v);
+                v.MaterialRate = Random.Range(50, 80); //How many rocks get thrown out of the volcano each frame
+                this.AddShieldVolcano(v);
             }
         }
     }
@@ -931,10 +942,12 @@ public class Crust
             }
             else // just one O and one C
             {
+                float subductedHeight;
                 if (movedCrustNodes[xPos, zPos].First.Value.Plate.Type == PlateType.Oceanic) //O,C
                 {
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = true;
                     movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - (maxHeight * 0.05f); //subduct downwards
+                    subductedHeight = movedCrustNodes[xPos, zPos].First.Value.Height;
 
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = false;
                     //move to the start of the list
@@ -944,9 +957,24 @@ public class Crust
                 else //C,O
                 {
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
-
+                    
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = true;
                     movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - (maxHeight * 0.05f); //subduct downwards
+                    subductedHeight = movedCrustNodes[xPos, zPos].Last.Value.Height;
+                }
+
+                //If the subducting plate is deep enough, random chance of new volcano
+                if (crustNodes[xPos, zPos][0].Height < baseHeight * 0.2f)
+                {
+                    float chance = Random.Range(0.0f, 1.0f);
+                    if (chance > 0.9995f)
+                    {
+                        Volcano v = ObjectPooler.current.GetPooledVolcano();
+                        v.X = xPos;
+                        v.Z = zPos;
+                        v.MaterialRate = Random.Range(30, 60); //How many rocks get thrown out of the volcano each frame
+                        this.AddStratoVolcano(v); //steep sided volcano
+                    }
                 }
             }
         }
@@ -955,17 +983,15 @@ public class Crust
 
 
     //Implemented using particle deposition
-    private void EruptVolcanos()
+    private void EruptVolcanos(List<Volcano> volcanos, int maxAge, int maxSearchRange, int maxElevationThreshold, int dropZoneRadius)
     {
-		float rockSize = maxHeight / 10f;
-		float heightSimilarityEpsilon = rockSize * 0.45f; //if heights are this distance away from eachother, they will be considered equal
         for (int v = 0; v < volcanos.Count; v++)
         {
 			var vol = volcanos[v];
             //Increase age
             vol.Age++;
             //If it's at the end of it's lifetime, remove it from the list and return it to the volcano object pool
-            if (vol.Age >= 40)
+            if (vol.Age >= maxAge)
             {
                 ObjectPooler.current.ReturnVolcanoToPool(vol);
                 volcanos.RemoveAt(v);
@@ -975,11 +1001,12 @@ public class Crust
 				int rocksThrown = vol.Age * vol.MaterialRate;
 				int searchRange = 0; //higher search radius will make shallower slopes
 				int elevationThreshold = 0; //higher elevation threshold than 1 will make very steep slopes
+                float differenceFactor = heightSimilarityEpsilon;
                 for (int rock = 0; rock < vol.MaterialRate; rock++)
                 {
 					//choose a random drop point within volcano's radius
 					float dropPointAngle = 2 * Mathf.PI * Random.Range(0.0f, 1.0f);
-					float dropPointDistance = 3 * Random.Range(0.0f, 1.0f);
+					float dropPointDistance = dropZoneRadius * Random.Range(0.0f, 1.0f);
 					float relativeDropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
 					float relativeDropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
                     int dropX = Mathf.RoundToInt(vol.X + relativeDropX);
@@ -991,8 +1018,12 @@ public class Crust
                     if (currentZ < 0) { currentZ = height + currentZ; }
 
 					int noiseIndex = rocksThrown + rock;
-					searchRange = (int)(3 * vol.NoiseArray[noiseIndex]) + 1; //should give range values from 1 to 3 ( and 4 in some rare cases)
-					elevationThreshold = (int)(2 * vol.NoiseArray[vol.NoiseArray.Length - noiseIndex]); //should give values 0 or 1 (2 rarely)
+					searchRange = (int)(maxSearchRange * vol.NoiseArray[noiseIndex]) + 1; //should give range values from 1 to maxSearchRange ( and maxSearchRange+1 in some rare cases)
+                    if (maxElevationThreshold != 0)
+                    {
+                        elevationThreshold = (int)(maxElevationThreshold * vol.NoiseArray[vol.NoiseArray.Length - noiseIndex]); //should give values 0 to maxElevationThreshold-1 (2 maxElevationThreshold)
+                        differenceFactor = elevationThreshold + heightSimilarityEpsilon;
+                    }
 
                     //rock rolling loop
 					bool stable = false;
@@ -1041,7 +1072,7 @@ public class Crust
                                         if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
                                         var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
 
-                                        if (currentNode.Height - topHexagonNode.Height > heightSimilarityEpsilon)
+                                        if (currentNode.Height - topHexagonNode.Height > differenceFactor)
                                         {
                                             currentX = crustIndexX;
                                             currentZ = crustIndexZ;
@@ -1053,7 +1084,7 @@ public class Crust
                                             if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
                                             var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
 
-                                            if (currentNode.Height - botHexagonNode.Height > heightSimilarityEpsilon)
+                                            if (currentNode.Height - botHexagonNode.Height > differenceFactor)
                                             {
                                                 currentX = crustIndexX;
                                                 currentZ = crustIndexZ;
@@ -1067,7 +1098,7 @@ public class Crust
                                         if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
                                         var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
 
-                                        if (currentNode.Height - botHexagonNode.Height > heightSimilarityEpsilon)
+                                        if (currentNode.Height - botHexagonNode.Height > differenceFactor)
                                         {
                                             currentX = crustIndexX;
                                             currentZ = crustIndexZ;
@@ -1079,7 +1110,7 @@ public class Crust
                                             if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
                                             var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
 
-                                            if (currentNode.Height - topHexagonNode.Height > heightSimilarityEpsilon)
+                                            if (currentNode.Height - topHexagonNode.Height > differenceFactor)
                                             {
                                                 currentX = crustIndexX;
                                                 currentZ = crustIndexZ;

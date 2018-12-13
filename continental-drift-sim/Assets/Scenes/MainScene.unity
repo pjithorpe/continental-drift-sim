@@ -141,7 +141,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 138b391b025571f41ba4fc9c67c59c67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pooledNodeAmount: 1500000
+  pooledNodeAmount: 2160000
   pooledVolcanoAmount: 10000
 --- !u!4 &297046812
 Transform:
@@ -169,9 +169,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   triWidth: 1
   triHeight: 1
-  meshWidth: 1000
-  meshHeight: 500
+  meshWidth: 1200
+  meshHeight: 600
   randomSeed: 767676
+  plateCount: 7
 --- !u!1 &876773261
 GameObject:
   m_ObjectHideFlags: 0

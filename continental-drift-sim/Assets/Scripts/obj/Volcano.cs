@@ -6,16 +6,14 @@ public class Volcano : PoolableObject
     int x, z;
     int age;
     int materialRate;
-    Crust crust;
 	int[] noiseArray;
 
-    static int MAX_MATERIAL_PRODUCED = 2400; // maximum material produced = maximum volcano age * maximum material rate
+    static int MAX_MATERIAL_PRODUCED = 1000; // maximum material produced = maximum volcano age * maximum material rate
 
     public Volcano(int x, int z, Crust crust)
     {
         this.x = x;
         this.z = z;
-        this.crust = crust;
         this.age = 0;
 		this.noiseArray = GenerateNoise();
     }
@@ -40,11 +38,6 @@ public class Volcano : PoolableObject
         get { return this.materialRate; }
         set { this.materialRate = value; }
     }
-    public Crust Crust
-    {
-        get { return this.crust; }
-        set { this.crust = value; }
-    }
 	public int[] NoiseArray
 	{
 		get { return this.noiseArray; }
@@ -54,7 +47,6 @@ public class Volcano : PoolableObject
     public override void CleanObject()
     {
         materialRate = age = z = x = 0;
-        crust = null;
     }
 
     private int[] GenerateNoise()

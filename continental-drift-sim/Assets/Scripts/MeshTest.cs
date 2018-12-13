@@ -12,6 +12,8 @@ public class MeshTest : MonoBehaviour {
 
     [SerializeField] public int randomSeed = 1;
 
+    [SerializeField] public int plateCount = 6;
+
     Mesh mesh;
     MeshFilter mf;
     MeshRenderer mr;
@@ -32,7 +34,7 @@ public class MeshTest : MonoBehaviour {
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 2.0f, seaLevel: 1.0f);
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 1.0f, seaLevel: 1.0f);
     }
 
     void Start()
@@ -67,7 +69,7 @@ public class MeshTest : MonoBehaviour {
         {
             Debug.Log("you pressed c.");
             testCrust.BuildMesh(addNoise:true);
-            testCrust.InitialiseCrust(10);
+            testCrust.InitialiseCrust(plateCount);
 
             for (int i = 0; i < testCrust.Plates.Length; i++)
             {
