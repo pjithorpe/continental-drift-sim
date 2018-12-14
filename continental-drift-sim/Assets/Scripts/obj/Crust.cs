@@ -495,11 +495,15 @@ public class Crust
                     int vertIndex = newX + (newZ * width);
                     if (newZ % 2 == 0)
                     {
-                        verts[vertIndex] = new Vector3(newX * triWidth, newNodes[newX, newZ][0].Height, newZ * triHeight);
+                        verts[vertIndex].x = newX * triWidth;
+                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
+                        verts[vertIndex].z = newZ * triHeight;
                     }
                     else
                     {
-                        verts[vertIndex] = new Vector3((newX * triWidth) + halfTriWidth, newNodes[newX, newZ][0].Height, newZ * triHeight);
+                        verts[vertIndex].x = (newX * triWidth) + halfTriWidth;
+                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
+                        verts[vertIndex].z = newZ * triHeight;
                     }
 
                     float h = verts[vertIndex].y;
@@ -580,11 +584,15 @@ public class Crust
                 int vertIndex = j + (i * width);
                 if (i % 2 == 0)
                 {
-                    verts[vertIndex] = new Vector3(j * triWidth, crustNodes[j,i][0].Height, i * triHeight);
+                    verts[vertIndex].x = j * triWidth;
+                    verts[vertIndex].y = crustNodes[j, i][0].Height;
+                    verts[vertIndex].z = i * triHeight;
                 }
                 else
                 {
-                    verts[vertIndex] = new Vector3((j * triWidth) + halfTriWidth, crustNodes[j,i][0].Height, i * triHeight);
+                    verts[vertIndex].x = (j * triWidth) + halfTriWidth;
+                    verts[vertIndex].y = crustNodes[j, i][0].Height;
+                    verts[vertIndex].z = i * triHeight;
                 }
 
                 float h = verts[vertIndex].y;
@@ -644,7 +652,7 @@ public class Crust
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
         EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2);
-        EruptVolcanos(stratoVolcanos, 25, 3, 2, 1, updateCoords: true);
+        EruptVolcanos(stratoVolcanos, 5, 3, 1, 5, updateCoords: true);
 
         mesh.vertices = verts;
         mesh.colors = colors;
@@ -711,11 +719,22 @@ public class Crust
             float chance = Random.Range(0.0f, 1.0f);
             if (chance > 0.995f) // 1 in 1000 chance
             {
-                Volcano v = ObjectPooler.current.GetPooledVolcano();
-                v.X = xPos;
-                v.Z = zPos;
-                v.MaterialRate = Random.Range(50, 80); //How many rocks get thrown out of the volcano each frame
-                this.AddShieldVolcano(v);
+                if (chance > 0.9999f) // 1 in 1000 chance
+                {
+                    Volcano v = ObjectPooler.current.GetPooledVolcano();
+                    v.X = xPos;
+                    v.Z = zPos;
+                    v.MaterialRate = 1000; //How many rocks get thrown out of the volcano each frame
+                    this.AddStratoVolcano(v);
+                }
+                else
+                {
+                    Volcano v = ObjectPooler.current.GetPooledVolcano();
+                    v.X = xPos;
+                    v.Z = zPos;
+                    v.MaterialRate = Random.Range(50, 80); //How many rocks get thrown out of the volcano each frame
+                    this.AddShieldVolcano(v);
+                }
             }
         }
     }
