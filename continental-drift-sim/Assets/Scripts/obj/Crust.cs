@@ -301,6 +301,10 @@ public class Crust
 
         meshRenderer.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
 
+
+        // Now draw the UI and set the camera dimensions
+
+
         Camera mainCam = Camera.main;
         mainCam.enabled = true;
         mainCam.aspect = 1;
