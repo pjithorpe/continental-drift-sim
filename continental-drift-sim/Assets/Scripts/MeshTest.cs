@@ -130,6 +130,18 @@ public class MeshTest : MonoBehaviour {
         testCrust.UpdateMesh();
     }
 
+    public void PauseOrPlay(bool pause)
+    {
+        if (pause)
+        {
+            CancelInvoke();
+        }
+        else
+        {
+            InvokeRepeating("UpdateTestMesh", 0.0f, moveSpeed);
+        }
+    }
+
     private void OnDrawGizmos()
     {
         
