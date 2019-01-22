@@ -43,7 +43,7 @@ public class Crust
     Plate p = new Plate(defaultHeight: 0.0f, xSpeed: 0, zSpeed: 0);
 
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 10.0f, float maxHeight = 20.0f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 10.0f, float maxHeight = 5.0f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
     {
         this.width = width;
         this.height = height;
@@ -602,14 +602,14 @@ public class Crust
                 float h = verts[vertIndex].y;
                 float normalisedHeight = (h - baseHeight) / maxHeight;
                 //debug
-                if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
+                /*if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
                 {
                     colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
                 }
                 else
                 {
                     colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
-                }
+                }*/
                 //end debug
                 //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
             }

@@ -42,6 +42,26 @@ public class MeshTest : MonoBehaviour {
         moveSpeed = 1.0f;
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
+
+        testCrust.BuildMesh(addNoise: true);
+        testCrust.InitialiseCrust(plateCount);
+
+        for (int i = 0; i < testCrust.Plates.Length; i++)
+        {
+            while (testCrust.Plates[i].XSpeed == 0 && testCrust.Plates[i].ZSpeed == 0)
+            {
+                testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
+                testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
+                if (Random.Range(0.0f, 1.0f) > 0.5f)
+                {
+                    testCrust.Plates[i].Type = PlateType.Oceanic;
+                }
+                else
+                {
+                    testCrust.Plates[i].Type = PlateType.Continental;
+                }
+            }
+        }
     }
 
     void Update()
@@ -62,30 +82,6 @@ public class MeshTest : MonoBehaviour {
             if(testCrust.SeaLevel <= -0.1f)
             {
                 cooling = false;
-            }
-        }
-
-        if (Input.GetKeyDown("c"))
-        {
-            Debug.Log("you pressed c.");
-            testCrust.BuildMesh(addNoise:true);
-            testCrust.InitialiseCrust(plateCount);
-
-            for (int i = 0; i < testCrust.Plates.Length; i++)
-            {
-                while(testCrust.Plates[i].XSpeed == 0 && testCrust.Plates[i].ZSpeed == 0)
-                {
-                    testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
-                    testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
-                    if(Random.Range(0.0f,1.0f) > 0.5f)
-                    {
-                        testCrust.Plates[i].Type = PlateType.Oceanic;
-                    }
-                    else
-                    {
-                        testCrust.Plates[i].Type = PlateType.Continental;
-                    }
-                }
             }
         }
 
