@@ -2,17 +2,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Menu : MonoBehaviour
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class MenuController : MonoBehaviour
 {
-    // Start is called before the first frame update
+    // Use this for initialization
     void Start()
     {
-        
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+
+    }
+
+    public void StartSimulation()
+    {
+        SceneManager.LoadScene("MainScene");
+    }
+
+    public void QuitApplication()
+    {
+        Application.Quit();
     }
 }

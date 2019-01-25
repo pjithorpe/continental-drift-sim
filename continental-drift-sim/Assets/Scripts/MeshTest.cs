@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MeshTest : MonoBehaviour {
 
@@ -14,6 +15,9 @@ public class MeshTest : MonoBehaviour {
 
     [SerializeField] public int plateCount = 6;
 
+    public Text loadingText;
+    public Slider sliderBar;
+
     Mesh mesh;
     MeshFilter mf;
     MeshRenderer mr;
@@ -24,27 +28,43 @@ public class MeshTest : MonoBehaviour {
     float t;
     float coolingTime;
     float moveSpeed;
+    float sliderProgress;
 
     bool cooling;
     bool move;
 
-    private void Awake()
+    void Start()
+    {
+        StartCoroutine(InitialisationCoroutine());
+    }
+
+    IEnumerator InitialisationCoroutine()
     {
         Random.InitState(randomSeed);
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 1.0f, seaLevel: 1.0f);
-    }
+        sliderProgress += 0.2f;
+        yield return null;
 
-    void Start()
-    {
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 1.0f, seaLevel: 1.0f);
+
+        sliderProgress += 0.2f;
+        yield return null;
+
         moveSpeed = 1.0f;
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
 
         testCrust.BuildMesh(addNoise: true);
+
+        sliderProgress += 0.2f;
+        yield return null;
+
         testCrust.InitialiseCrust(plateCount);
+
+        sliderProgress += 0.2f;
+        yield return null;
 
         for (int i = 0; i < testCrust.Plates.Length; i++)
         {
@@ -61,11 +81,21 @@ public class MeshTest : MonoBehaviour {
                     testCrust.Plates[i].Type = PlateType.Continental;
                 }
             }
+
+            sliderProgress += (0.2f / testCrust.Plates.Length);
+            yield return null;
         }
+
+        sliderBar.gameObject.SetActive(false);
     }
 
     void Update()
     {
+        float progress = Mathf.Clamp01(sliderProgress);
+        sliderBar.value = progress;
+        loadingText.text = Mathf.FloorToInt(progress * 100f) + "%";
+
+
         t = Time.deltaTime/coolingTime;
 
         if (Input.GetKeyDown("x"))
