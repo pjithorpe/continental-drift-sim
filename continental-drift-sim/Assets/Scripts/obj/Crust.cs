@@ -34,6 +34,7 @@ public class Crust
     private int[] tris;
     private Color[] colors;
     private LinkedList<CrustNode>[,] movedCrustNodes;
+    private float subductionFactor;
 
     //volcanos
     float rockSize;
@@ -63,8 +64,9 @@ public class Crust
         this.stratoVolcanos = new List<Volcano>();
 
         this.halfTriWidth = triWidth / 2;
+        subductionFactor = maxHeight * 0.05f;
 
-        this.rockSize = maxHeight / 8f;
+        this.rockSize = maxHeight / 9f;
         this.heightSimilarityEpsilon = rockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
@@ -786,7 +788,7 @@ public class Crust
     {
         //plates are overlapping, check which should subduct underneath (virtual), and which should be the surface (non-virtual)
 
-        // if only one plate is non-virtual, do nothing
+        // check if there is more than one non-virtual plate
         bool oneNonVirtual = false;
         var currentNode = movedCrustNodes[xPos, zPos].First; // note: this refers to a LinkedListNode<T>, not a CrustNode
         for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
@@ -799,7 +801,20 @@ public class Crust
             currentNode = currentNode.Next;
         }
 
-        if (!oneNonVirtual) //multiple non-virtual nodes
+        if (oneNonVirtual) //one non-virtual node
+        {
+            //subduct all virtual nodes downwards
+            currentNode = movedCrustNodes[xPos, zPos].First;
+            for (int i = 0; i < movedCrustNodes[xPos, zPos].Count; i++)
+            {
+                if (currentNode.Value.IsVirtual)
+                {
+                    currentNode.Value.Height = currentNode.Value.Height - subductionFactor; //subduct downwards
+                }
+                currentNode = currentNode.Next;
+            }
+        }
+        else //multiple non-virtual nodes
         {
             CollidePlates(xPos, zPos, ref singlePlateSpacesCounts);
         }
@@ -873,7 +888,7 @@ public class Crust
                 if (k != mostDense)
                 {
                     currentNode.Value.IsVirtual = true;
-                    currentNode.Value.Height = currentNode.Value.Height - (maxHeight * 0.05f); //subduct downwards
+                    currentNode.Value.Height = currentNode.Value.Height - subductionFactor; //subduct downwards
                     currentNode = currentNode.Next;
                 }
                 else
@@ -999,7 +1014,7 @@ public class Crust
                 if (movedCrustNodes[xPos, zPos].First.Value.Plate.Type == PlateType.Oceanic) //O,C
                 {
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - (maxHeight * 0.1f); //subduct downwards
+                    movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - subductionFactor; //subduct downwards
                     subductedHeight = movedCrustNodes[xPos, zPos].First.Value.Height;
 
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = false;
@@ -1012,7 +1027,7 @@ public class Crust
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
                     
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - (maxHeight * 0.1f); //subduct downwards
+                    movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - subductionFactor; //subduct downwards
                     subductedHeight = movedCrustNodes[xPos, zPos].Last.Value.Height;
                 }
 
