@@ -43,7 +43,7 @@ public class Crust
     Plate p = new Plate(defaultHeight: 0.0f, xSpeed: 0, zSpeed: 0);
 
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 10.0f, float maxHeight = 5.0f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 1.7f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
     {
         this.width = width;
         this.height = height;
@@ -64,7 +64,7 @@ public class Crust
 
         this.halfTriWidth = triWidth / 2;
 
-        this.rockSize = maxHeight / 10f;
+        this.rockSize = maxHeight / 8f;
         this.heightSimilarityEpsilon = rockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
@@ -601,7 +601,7 @@ public class Crust
 
                 float h = verts[vertIndex].y;
                 float normalisedHeight = (h - baseHeight) / maxHeight;
-                //debug
+                //debug (for continental or oceanic)
                 /*if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
                 {
                     colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
@@ -611,6 +611,29 @@ public class Crust
                     colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
                 }*/
                 //end debug
+
+                //debug (for number of nodes at vertex)
+                if (crustNodes[j,i].Count == 1)
+                {
+                    colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
+                }
+                else if (crustNodes[j, i].Count == 2)
+                {
+                    colors[vertIndex] = Color.green;
+                }
+                else if (crustNodes[j, i].Count == 3)
+                {
+                    colors[vertIndex] = Color.yellow;
+                }
+                else if (crustNodes[j, i].Count == 4)
+                {
+                    colors[vertIndex] = Color.red;
+                }
+                else if (crustNodes[j, i].Count > 4)
+                {
+                    colors[vertIndex] = Color.black;
+                }
+
                 //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
             }
         }
@@ -795,8 +818,8 @@ public class Crust
         listLength = movedCrustNodes[xPos, zPos].Count;
         for (int i = 0; i < listLength; i++)
         {
-            //get rid of virtual nodes that are far below the surface
-            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < baseHeight - 1.0f))
+            //get rid of virtual nodes that are below the surface
+            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < baseHeight))
             {
                 var movedCrustNode = ObjectPooler.current.GetPooledNode();
                 movedCrustNode.Copy(currentNode.Value);

@@ -300,7 +300,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 138b391b025571f41ba4fc9c67c59c67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pooledNodeAmount: 13500000
+  pooledNodeAmount: 1500000
   pooledVolcanoAmount: 20000
 --- !u!4 &297046812
 Transform:

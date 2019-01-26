@@ -47,12 +47,12 @@ public class MeshTest : MonoBehaviour {
         sliderProgress += 0.2f;
         yield return null;
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, baseHeight: 10.0f, maxHeight: 1.0f, seaLevel: 1.0f);
+        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, seaLevel: 1.0f);
 
         sliderProgress += 0.2f;
         yield return null;
 
-        moveSpeed = 1.0f;
+        moveSpeed = 0.2f;
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
 
