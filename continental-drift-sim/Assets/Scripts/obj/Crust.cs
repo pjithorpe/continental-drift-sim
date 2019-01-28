@@ -28,6 +28,8 @@ public class Crust
 
     // non-field definitions
     private float halfTriWidth;
+    private float spatialWidth; // (triWidth * width)
+    private float spatialHeight; // (triHeight * height)
     private int vertexCount;
     private int triCount;
     private Vector3[] verts;
@@ -63,11 +65,13 @@ public class Crust
         this.shieldVolcanos = new List<Volcano>();
         this.stratoVolcanos = new List<Volcano>();
 
-        this.halfTriWidth = triWidth / 2;
+        halfTriWidth = triWidth / 2;
+        spatialWidth = width * triWidth;
+        spatialHeight = height * triHeight;
         subductionFactor = maxHeight * 0.05f;
 
-        this.rockSize = maxHeight / 9f;
-        this.heightSimilarityEpsilon = rockSize * 0.2f;
+        rockSize = maxHeight / 9f;
+        heightSimilarityEpsilon = rockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
         this.AddPlate(p);
@@ -304,19 +308,17 @@ public class Crust
         meshRenderer.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
 
 
-        // Now draw the UI and set the camera dimensions
-
-
+        // Now set the camera dimensions
         Camera mainCam = Camera.main;
         mainCam.enabled = true;
         mainCam.aspect = 1;
-        mainCam.transform.position = new Vector3(width * triWidth * 0.5f, 50.0f, height * triHeight * 0.5f);
+        mainCam.transform.position = new Vector3(spatialWidth * 0.5f, 50.0f, spatialHeight * 0.5f);
         //This enables the orthographic mode
         mainCam.orthographic = true;
         //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
-        mainCam.orthographicSize = width * triWidth * 0.5f;
+        mainCam.orthographicSize = spatialWidth * 0.5f;
         //Set the orthographic Camera Viewport size and position
-        mainCam.rect = new Rect(0.0f, 0.0f, width * triWidth, height * triHeight);
+        mainCam.rect = new Rect(0.0f, 0.0f, spatialWidth, spatialHeight);
 
 
         /*Vector3[] normals = new Vector3[tris.Length];
@@ -344,15 +346,6 @@ public class Crust
     /*
     * Generates a random set of thin plates as an initial state
     * 
-    * 
-Vector2 edgeStart = vorRegions[i][j];
-int endPointIndex = (j + 1) % vorRegions[i].Count; // wraps around to start of points list when we get to the end
-Vector2 edgeEnd = vorRegions[i][endPointIndex];
-if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if an edge starts in the real voronoi and ends in the "ghost"
-{
-    // change the real diagram to use the edge produced by the ghost technique
-
-}
     */
     public void InitialiseCrust(int plateCount, int voronoiRelaxationSteps)
     {
@@ -368,7 +361,7 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
             this.AddPlate(plates[i]);
 
             //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
-            Vector2 centroid = new Vector2(Random.Range(0, width * triWidth), Random.Range(0, height * triHeight));
+            Vector2 centroid = new Vector2(Random.Range(0, spatialWidth), Random.Range(0, spatialHeight));
             centroids.Add(centroid);
         }
 
@@ -493,10 +486,6 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
                         {
                             //have to make sure the x value is wrapped around if needed because of the cylindricalisation
                             int wrappedX = x % width;
-                            if (wrappedX > width - 1 || wrappedX < 0)
-                            {
-                                int ffff = wrappedX;
-                            }
                             crustNodes[wrappedX, z - 1][0].Plate = plates[i];
                             fillPlotCount++;
                         }
@@ -579,8 +568,8 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
         for (int i = 0; i < noOfCentroids; i++)
         {
             //We copy all of the centroids to create 2 "ghost" versions of the voronoi which we we stitch onto either side of the real one. This will help us to cylindricalise the map.
-            Vector2 ghostCentroidRight = new Vector2(centroids[i].x + width * triWidth, centroids[i].y);
-            Vector2 ghostCentroidRightRight = new Vector2(centroids[i].x + (2f * (width * triWidth)), centroids[i].y);
+            Vector2 ghostCentroidRight = new Vector2(centroids[i].x + spatialWidth, centroids[i].y);
+            Vector2 ghostCentroidRightRight = new Vector2(centroids[i].x + (2f * spatialWidth), centroids[i].y);
             centroids.Add(ghostCentroidRight);
             centroids.Add(ghostCentroidRightRight);
 
@@ -590,7 +579,7 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
             nullColors.Add(0);
         }
 
-        Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, 3f * width * triWidth, height * triHeight));
+        Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, 3f * spatialWidth, spatialHeight));
         List<List<Vector2>> vorRegions = voronoi.Regions();
         var centralVorRegions = new List<List<Vector2>>();
 
@@ -600,7 +589,7 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
             bool hasPointInMiddle = false;
             for (int j = 0; j < vorRegions[i].Count; j++)
             {
-                if ((vorRegions[i][j].x >= (width * triWidth)) && (vorRegions[i][j].x < (2f * (width * triWidth))))
+                if ((vorRegions[i][j].x >= spatialWidth) && (vorRegions[i][j].x < (2f * spatialWidth)))
                 {
                     hasPointInMiddle = true;
                     break;
@@ -632,7 +621,7 @@ if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if a
                 // this region does not spill over the left side, so keep it, and shift all its points to the left by a mesh width
                 for (int p = 0; p < centralVorRegions[i].Count; p++)
                 {
-                    centralVorRegions[i][p] = new Vector2(centralVorRegions[i][p].x - (width * triWidth), centralVorRegions[i][p].y);
+                    centralVorRegions[i][p] = new Vector2(centralVorRegions[i][p].x - spatialWidth, centralVorRegions[i][p].y);
                 }
                 cylindricalVorRegions.Add(centralVorRegions[i]); 
             }

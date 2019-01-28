@@ -54,7 +54,7 @@ public class ObjectPooler : MonoBehaviour
         }
         else
         {
-            Debug.Log("Ran out of pooled nodes!");
+            Debug.Log("Ran out of pooled volcanos!");
             Debug.Break();
         }
         return null;
