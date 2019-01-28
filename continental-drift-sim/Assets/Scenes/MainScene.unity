@@ -333,7 +333,7 @@ MonoBehaviour:
   meshWidth: 800
   meshHeight: 800
   randomSeed: 453535
-  plateCount: 12
+  plateCount: 14
   voronoiRelaxationSteps: 10
   loadingText: {fileID: 939151739}
   sliderBar: {fileID: 1710398376}
