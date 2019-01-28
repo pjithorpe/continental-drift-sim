@@ -14,6 +14,7 @@ public class MeshTest : MonoBehaviour {
     [SerializeField] public int randomSeed = 1;
 
     [SerializeField] public int plateCount = 6;
+    [SerializeField] public int voronoiRelaxationSteps = 0;
 
     public Text loadingText;
     public Slider sliderBar;
@@ -52,7 +53,7 @@ public class MeshTest : MonoBehaviour {
         sliderProgress += 0.2f;
         yield return null;
 
-        moveSpeed = 0.2f;
+        moveSpeed = 0.15f;
         coolingTime = 4;
         testCrust.Stage = new WaterStage();
 
@@ -61,7 +62,7 @@ public class MeshTest : MonoBehaviour {
         sliderProgress += 0.2f;
         yield return null;
 
-        testCrust.InitialiseCrust(plateCount);
+        testCrust.InitialiseCrust(plateCount, voronoiRelaxationSteps);
 
         sliderProgress += 0.2f;
         yield return null;

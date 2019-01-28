@@ -342,13 +342,22 @@ public class Crust
     }
 
     /*
-        * Generates a random set of thin plates as an initial state
-        */
-    public void InitialiseCrust(int plateCount)
+    * Generates a random set of thin plates as an initial state
+    * 
+    * 
+Vector2 edgeStart = vorRegions[i][j];
+int endPointIndex = (j + 1) % vorRegions[i].Count; // wraps around to start of points list when we get to the end
+Vector2 edgeEnd = vorRegions[i][endPointIndex];
+if (edgeStart.x <= (width * triWidth) && edgeEnd.x > (width * triWidth)) // if an edge starts in the real voronoi and ends in the "ghost"
+{
+    // change the real diagram to use the edge produced by the ghost technique
+
+}
+    */
+    public void InitialiseCrust(int plateCount, int voronoiRelaxationSteps)
     {
         var plates = new Plate[plateCount];
         var centroids = new List<Vector2>();
-        var nullColors = new List<uint>(); //needed to call Voronoi(), but redundant in this use case
 
         // First, choose points on the mesh at random as our plate centres (centroids)
         for (int i = 0; i < plateCount; i++)
@@ -359,41 +368,71 @@ public class Crust
             this.AddPlate(plates[i]);
 
             //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
-            centroids.Add(new Vector2(Random.Range(0, width * triWidth), Random.Range(0, height * triHeight)));
-            nullColors.Add(0);
+            Vector2 centroid = new Vector2(Random.Range(0, width * triWidth), Random.Range(0, height * triHeight));
+            centroids.Add(centroid);
         }
 
-        Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, width * triWidth, height * triHeight));
-        List<List<Vector2>> vorRegions = voronoi.Regions();
-        Debug.Log("Number of plates: " + plateCount.ToString() + ", Number of regions: " + vorRegions.Count.ToString());
+        //Now generate the voronoi (multiple times if we perform relaxations)
+        List<List<Vector2>> cylindricalVorRegions = GenerateCylindricalVoronoi(centroids);
+        
+        //TODO: relaxation currently bugged (number of centroids goes down every time relaxation is run)
+        if (voronoiRelaxationSteps > 0)
+        {
+            for (int i = 0; i < voronoiRelaxationSteps; i++)
+            {
+                //relaxation
+                var relaxedCentroids = new List<Vector2>();
+                for (int r = 0; r < cylindricalVorRegions.Count; r++)
+                {
+                    float totalX = 0f;
+                    float totalY = 0f;
+                    for (int p = 0; p < cylindricalVorRegions[r].Count; p++)
+                    {
+                        totalX += cylindricalVorRegions[r][p].x;
+                        totalY += cylindricalVorRegions[r][p].y;
+                    }
+
+                    float averageX = totalX / cylindricalVorRegions[r].Count;
+                    float averageY = totalY / cylindricalVorRegions[r].Count;
+
+                    relaxedCentroids.Add(new Vector2(averageX, averageY));
+                }
+
+                //re-generate
+                cylindricalVorRegions = GenerateCylindricalVoronoi(relaxedCentroids);
+            }
+        }
+        
+
+        Debug.Log("Number of plates: " + plateCount.ToString() + ", Number of regions: " + cylindricalVorRegions.Count.ToString());
 
         //Now that we have the regions, we can use a filling algorithm to assign all the vertices in each polygon to a plate
-        for (int i = 0; i < vorRegions.Count; i++)
+        for (int i = 0; i < cylindricalVorRegions.Count; i++)
         {
             //get the min/max values for the region
             float minX, maxX, minZ, maxZ;
-            minX = maxX = vorRegions[i][0].x;
-            minZ = maxZ = vorRegions[i][0].y;
+            minX = maxX = cylindricalVorRegions[i][0].x;
+            minZ = maxZ = cylindricalVorRegions[i][0].y;
 
             int j = 0;
-            for (j = 1; j < vorRegions[i].Count; j++)
+            for (j = 1; j < cylindricalVorRegions[i].Count; j++)
             {
-                if (vorRegions[i][j].x < minX)
+                if (cylindricalVorRegions[i][j].x < minX)
                 {
-                    minX = vorRegions[i][j].x;
+                    minX = cylindricalVorRegions[i][j].x;
                 }
-                else if (vorRegions[i][j].x > maxX)
+                else if (cylindricalVorRegions[i][j].x > maxX)
                 {
-                    maxX = vorRegions[i][j].x;
+                    maxX = cylindricalVorRegions[i][j].x;
                 }
 
-                if (vorRegions[i][j].y < minZ)
+                if (cylindricalVorRegions[i][j].y < minZ)
                 {
-                    minZ = vorRegions[i][j].y;
+                    minZ = cylindricalVorRegions[i][j].y;
                 }
-                else if (vorRegions[i][j].y > maxZ)
+                else if (cylindricalVorRegions[i][j].y > maxZ)
                 {
-                    maxZ = vorRegions[i][j].y;
+                    maxZ = cylindricalVorRegions[i][j].y;
                 }
             }
 
@@ -407,7 +446,7 @@ public class Crust
             //Debug.Log(x1.ToString() + " " + x2.ToString() + " " + z1.ToString() + " " + z2.ToString() + " ");
 
             int fillPlotCount = 0;
-            int polyCorners = vorRegions[i].Count;
+            int polyCorners = cylindricalVorRegions[i].Count;
             int[] markers = new int[z2 - z1];
             int n;
 
@@ -419,9 +458,9 @@ public class Crust
                 j = 0;
                 for (j = 0; j < polyCorners; j++)
                 {
-                    if (vorRegions[i][j].y < z && vorRegions[i][n].y >= z || vorRegions[i][n].y < z && vorRegions[i][j].y >= z)
+                    if (cylindricalVorRegions[i][j].y < z && cylindricalVorRegions[i][n].y >= z || cylindricalVorRegions[i][n].y < z && cylindricalVorRegions[i][j].y >= z)
                     {
-                        markers[markerCount++] = (int)(vorRegions[i][j].x + (z - vorRegions[i][j].y) / (vorRegions[i][n].y - vorRegions[i][j].y) * (vorRegions[i][n].x - vorRegions[i][j].x));
+                        markers[markerCount++] = (int)(cylindricalVorRegions[i][j].x + (z - cylindricalVorRegions[i][j].y) / (cylindricalVorRegions[i][n].y - cylindricalVorRegions[i][j].y) * (cylindricalVorRegions[i][n].x - cylindricalVorRegions[i][j].x));
                     }
                     n = j;
                 }
@@ -452,7 +491,13 @@ public class Crust
                         if (markers[j + 1] > x2) markers[j + 1] = x2;
                         for (int x = markers[j]; x < markers[j + 1]; x++)
                         {
-                            crustNodes[x, z - 1][0].Plate = plates[i];
+                            //have to make sure the x value is wrapped around if needed because of the cylindricalisation
+                            int wrappedX = x % width;
+                            if (wrappedX > width - 1 || wrappedX < 0)
+                            {
+                                int ffff = wrappedX;
+                            }
+                            crustNodes[wrappedX, z - 1][0].Plate = plates[i];
                             fillPlotCount++;
                         }
                     }
@@ -473,8 +518,8 @@ public class Crust
                 }
             }
         }
+        
 
-        //temp
         var newNodes = new List<CrustNode>[width, height];
 
         for (int i = 0; i < height; i++)
@@ -524,9 +569,77 @@ public class Crust
         mesh.vertices = verts;
         mesh.colors = colors;
         meshFilter.mesh = mesh;
-        //end temp
     }
 
+    private List<List<Vector2>> GenerateCylindricalVoronoi(List<Vector2> centroids)
+    {
+        var nullColors = new List<uint>(); //needed to call Voronoi(), but redundant in this use case
+
+        int noOfCentroids = centroids.Count;
+        for (int i = 0; i < noOfCentroids; i++)
+        {
+            //We copy all of the centroids to create 2 "ghost" versions of the voronoi which we we stitch onto either side of the real one. This will help us to cylindricalise the map.
+            Vector2 ghostCentroidRight = new Vector2(centroids[i].x + width * triWidth, centroids[i].y);
+            Vector2 ghostCentroidRightRight = new Vector2(centroids[i].x + (2f * (width * triWidth)), centroids[i].y);
+            centroids.Add(ghostCentroidRight);
+            centroids.Add(ghostCentroidRightRight);
+
+            //the colors list has to be the same size as the centroids list
+            nullColors.Add(0);
+            nullColors.Add(0);
+            nullColors.Add(0);
+        }
+
+        Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, 3f * width * triWidth, height * triHeight));
+        List<List<Vector2>> vorRegions = voronoi.Regions();
+        var centralVorRegions = new List<List<Vector2>>();
+
+        //Now run the cylindricalisation step by removing all regions that are solely in the 2 ghost diagrams
+        for (int i = 0; i < vorRegions.Count; i++)
+        {
+            bool hasPointInMiddle = false;
+            for (int j = 0; j < vorRegions[i].Count; j++)
+            {
+                if ((vorRegions[i][j].x >= (width * triWidth)) && (vorRegions[i][j].x < (2f * (width * triWidth))))
+                {
+                    hasPointInMiddle = true;
+                    break;
+                }
+            }
+
+            if (hasPointInMiddle)
+            {
+                centralVorRegions.Add(vorRegions[i]); // this region has points within our final diagram, so keep it
+            }
+        }
+
+        var cylindricalVorRegions = new List<List<Vector2>>();
+        //Also remove any overlap regions on the left hand side so that we only have one copy of each wrap-around polygon (on the right hand side)
+        for (int i = 0; i < centralVorRegions.Count; i++)
+        {
+            bool hasPointOutsideLeftBoundary = false;
+            for (int j = 0; j < centralVorRegions[i].Count; j++)
+            {
+                if (centralVorRegions[i][j].x < (width * triWidth))
+                {
+                    hasPointOutsideLeftBoundary = true;
+                    break;
+                }
+            }
+
+            if (!hasPointOutsideLeftBoundary)
+            {
+                // this region does not spill over the left side, so keep it, and shift all its points to the left by a mesh width
+                for (int p = 0; p < centralVorRegions[i].Count; p++)
+                {
+                    centralVorRegions[i][p] = new Vector2(centralVorRegions[i][p].x - (width * triWidth), centralVorRegions[i][p].y);
+                }
+                cylindricalVorRegions.Add(centralVorRegions[i]); 
+            }
+        }
+
+        return cylindricalVorRegions;
+    }
 
 
 
