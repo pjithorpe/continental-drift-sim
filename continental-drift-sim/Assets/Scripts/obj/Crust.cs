@@ -793,44 +793,20 @@ public class Crust
 
     private void MoveNodes()
     {
-		int plateCount = 0;//debug
-
 		for(int p = 0; p < plates.Length; p++)
 		{
 			plates[p].RegisterMovement();
-			plateCount++; //debug
 		}
-		Debug.Log("Plates in plates array: " + plateCount.ToString());
-		bool plateNotFound = false; //debug
+
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
-                /*if (crustNodes[j, i].Count > 4)
-                {
-                    Debug.Log("More than 4 nodes in one crustNodes space: x=" + j.ToString() + " y=" + i.ToString());
-                }*/
-
                 //move the nodes
                 for (int n_i = 0; n_i < crustNodes[j, i].Count; n_i++)
                 {
                     //Get new x and y for prev node
                     CrustNode prevN = crustNodes[j, i][n_i];
-					//debug
-					bool plateFound = false;
-					for (int p = 0; p < plates.Length; p++)
-					{
-						if (plates[p] == prevN.Plate)
-						{
-							plateFound = true;
-							break;
-						}
-					}
-					if (!plateFound)
-					{
-						plateNotFound = true;
-					}
-					//end debug
 							
 					int newX, newZ;
 					if(prevN.Plate.CheckMoveX())
@@ -863,21 +839,6 @@ public class Crust
                 }
             }
         }
-
-		Debug.Log("platenotfound: " + plateNotFound.ToString());
-
-        //debug
-        /*for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                if (movedCrustNodes[j, i].Count > 4)
-                {
-                    Debug.Log("More than 4 nodes in one movedCrustNodes space: x=" + j.ToString() + " y=" + i.ToString() + " | Count=" + movedCrustNodes[j,i].Count.ToString());
-                }
-            }
-        }*/
-        //end debug
     }
 
 
