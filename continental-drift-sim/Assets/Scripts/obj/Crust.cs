@@ -1331,13 +1331,17 @@ public class Crust
 
             if (updateCoords)
             {
-                vol.X = (vol.X + crustNodes[vol.X, vol.Z][0].Plate.XSpeed) % width;
-                if (vol.X < 0) { vol.X = width + vol.X; }
-            }
-            else
-            {
-                vol.Z = (vol.Z + crustNodes[vol.X, vol.Z][0].Plate.ZSpeed) % height;
-                if (vol.Z < 0) { vol.Z = height + vol.Z; }
+                if (crustNodes[vol.X, vol.Z][0].Plate.CheckMoveX())
+                {
+                    vol.X = (vol.X + crustNodes[vol.X, vol.Z][0].Plate.XSpeed) % width;
+                    if (vol.X < 0) { vol.X = width + vol.X; }
+                }
+
+                if (crustNodes[vol.X, vol.Z][0].Plate.CheckMoveZ())
+                {
+                    vol.Z = (vol.Z + crustNodes[vol.X, vol.Z][0].Plate.ZSpeed) % height;
+                    if (vol.Z < 0) { vol.Z = height + vol.Z; }
+                }
             }
         }
     }
