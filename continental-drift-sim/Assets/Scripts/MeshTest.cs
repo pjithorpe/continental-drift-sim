@@ -69,10 +69,10 @@ public class MeshTest : MonoBehaviour {
 
         for (int i = 0; i < testCrust.Plates.Length; i++)
         {
-            while (testCrust.Plates[i].XSpeed == 0 && testCrust.Plates[i].ZSpeed == 0)
+			while ((testCrust.Plates[i].XSpeed < 0.3f && testCrust.Plates[i].XSpeed > -0.3f) && (testCrust.Plates[i].ZSpeed < 0.3f && testCrust.Plates[i].ZSpeed > -0.3f))
             {
-                testCrust.Plates[i].XSpeed = Random.Range(-2, 3);
-                testCrust.Plates[i].ZSpeed = Random.Range(-2, 3);
+                testCrust.Plates[i].AccurateXSpeed = Random.Range(-2f, 2f);
+                testCrust.Plates[i].AccurateZSpeed = Random.Range(-2f, 2f);
                 if (Random.Range(0.0f, 1.0f) > 0.5f)
                 {
                     testCrust.Plates[i].Type = PlateType.Oceanic;

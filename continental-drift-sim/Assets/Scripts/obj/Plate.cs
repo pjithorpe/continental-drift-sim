@@ -5,20 +5,24 @@ public class Plate
 {
     // field private vars
     private float defaultHeight = 5.0f;
-    private int xSpeed = 0;
-    private int zSpeed = 0;
+    private float xSpeed = 0;
+	private float zSpeed = 0;
+	private float absoluteInverseXSpeed = 0;
+	private float absoluteInverseZSpeed = 0;
+	private bool checkMoveX = false;
+	private bool checkMoveZ = false;
     private float density = 0.0f;
     private PlateType type;
     private Crust crust;
 
     // non-field definitions
     //not (get/set)able
+	private int xMoveCounter = 0;
+	private int zMoveCounter = 0;
 
-    public Plate(float defaultHeight = 5.0f, int xSpeed = 0, int zSpeed = 0, Crust crust = null)
+    public Plate(float defaultHeight = 5.0f, Crust crust = null)
     {
         this.defaultHeight = defaultHeight;
-        this.xSpeed = xSpeed;
-        this.zSpeed = zSpeed;
         if (crust != null) { crust.AddPlate(this); }
     }
 
@@ -28,16 +32,62 @@ public class Plate
         get { return this.defaultHeight; }
         set { this.defaultHeight = value; }
     }
+
     public int XSpeed
     {
-        get { return this.xSpeed; }
-        set { this.xSpeed = value; }
+        get
+		{
+			if (xSpeed > 1)
+			{
+				if (xSpeed > 0)
+				{
+					return 1;
+				}
+				else
+				{
+					return -1;
+				}
+			}
+			return Mathf.RoundToInt(xSpeed);
+		}
     }
-    public int ZSpeed
-    {
-        get { return this.zSpeed; }
-        set { this.zSpeed = value; }
-    }
+	public int ZSpeed
+	{
+		get
+		{
+			if (zSpeed > 1)
+			{
+				if (zSpeed > 0)
+				{
+					return 1;
+				}
+				else
+				{
+					return -1;
+				}
+			}
+			return Mathf.RoundToInt(zSpeed);
+		}
+	}
+	public float AccurateXSpeed
+	{
+		get { return this.xSpeed; }
+		set
+		{
+			this.xSpeed = value;
+			absoluteInverseXSpeed = Mathf.Abs(1f / xSpeed);
+		}
+	}
+	public float AccurateZSpeed
+	{
+		get { return this.zSpeed; }
+		set
+		{
+			this.zSpeed = value;
+			absoluteInverseZSpeed = Mathf.Abs(1f / zSpeed);
+		}
+	}
+
     public float Density
     {
         get { return this.density; }
@@ -54,6 +104,40 @@ public class Plate
         get { return this.crust; }
         set { this.crust = value; }
     }
+
+
+	public void RegisterMovement()
+	{
+		xMoveCounter++;
+		zMoveCounter++;
+
+		if (xMoveCounter >= absoluteInverseXSpeed)
+		{
+			checkMoveX = true;
+			xMoveCounter = 0;
+		}
+		else
+		{
+			checkMoveX = false;
+		}
+		if (xMoveCounter >= absoluteInverseXSpeed)
+		{
+			checkMoveZ = true;
+			zMoveCounter = 0;
+		}
+		else
+		{
+			checkMoveZ = false;
+		}
+	}
+	public bool CheckMoveX()
+	{
+		return checkMoveX;
+	}
+	public bool CheckMoveZ()
+	{
+		return checkMoveZ;
+	}
 }
 
 public enum PlateType

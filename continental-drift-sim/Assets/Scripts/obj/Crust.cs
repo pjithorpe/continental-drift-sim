@@ -43,7 +43,7 @@ public class Crust
     float heightSimilarityEpsilon; //in the particle deposition algoorithm, if heights are this distance away from eachother, they will be considered equal
 
     /* Remove this when the temporary code in update mesh is removed --> */
-    Plate p = new Plate(defaultHeight: 0.0f, xSpeed: 0, zSpeed: 0);
+    Plate p = new Plate(defaultHeight: 0.0f);
 
     // Constructor
     public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 1.7f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
@@ -793,6 +793,15 @@ public class Crust
 
     private void MoveNodes()
     {
+		int plateCount = 0;//debug
+
+		for(int p = 0; p < plates.Length; p++)
+		{
+			plates[p].RegisterMovement();
+			plateCount++; //debug
+		}
+		Debug.Log("Plates in plates array: " + plateCount.ToString());
+		bool plateNotFound = false; //debug
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
@@ -807,12 +816,43 @@ public class Crust
                 {
                     //Get new x and y for prev node
                     CrustNode prevN = crustNodes[j, i][n_i];
-                    int dx = prevN.Plate.XSpeed;
-                    int dz = prevN.Plate.ZSpeed;
-                    int newX = (prevN.X + dx) % width;
-                    if (newX < 0) { newX = width + newX; }
-                    int newZ = (prevN.Z + dz) % height;
-                    if (newZ < 0) { newZ = height + newZ; }
+					//debug
+					bool plateFound = false;
+					for (int p = 0; p < plates.Length; p++)
+					{
+						if (plates[p] == prevN.Plate)
+						{
+							plateFound = true;
+							break;
+						}
+					}
+					if (!plateFound)
+					{
+						plateNotFound = true;
+					}
+					//end debug
+							
+					int newX, newZ;
+					if(prevN.Plate.CheckMoveX())
+					{
+						int dx = prevN.Plate.XSpeed;
+						newX = (prevN.X + dx) % width;
+						if (newX < 0) { newX = width + newX; }
+					}
+					else
+					{
+						newX = prevN.X;
+					}
+					if(prevN.Plate.CheckMoveZ())
+					{
+						int dz = prevN.Plate.ZSpeed;
+						newZ = (prevN.Z + dz) % height;
+						if (newZ < 0) { newZ = height + newZ; }
+					}
+					else
+					{
+						newZ = prevN.Z;
+					}
 
                     //insert it at it's new position in movedNodes
                     var movedNode = ObjectPooler.current.GetPooledNode();
@@ -823,6 +863,8 @@ public class Crust
                 }
             }
         }
+
+		Debug.Log("platenotfound: " + plateNotFound.ToString());
 
         //debug
         /*for (int i = 0; i < height; i++)
