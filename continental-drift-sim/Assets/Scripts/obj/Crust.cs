@@ -37,6 +37,7 @@ public class Crust
     private Color[] colors;
     private LinkedList<CrustNode>[,] movedCrustNodes;
     private float subductionFactor;
+    private float subductionVolcanoDepthThreshold; // how deep below the surface a subducting plate needs to be before it can produce surface volcanos
 
     //volcanos
     float rockSize;
@@ -69,6 +70,7 @@ public class Crust
         spatialWidth = width * triWidth;
         spatialHeight = height * triHeight;
         subductionFactor = maxHeight * 0.05f;
+        subductionVolcanoDepthThreshold = maxHeight * 0.15f;
 
         rockSize = maxHeight / 9f;
         heightSimilarityEpsilon = rockSize * 0.2f;
@@ -895,13 +897,18 @@ public class Crust
 
         // check if there is more than one non-virtual plate
         bool oneNonVirtual = false;
+        float nonVirtualHeight = 0f;
         var currentNode = movedCrustNodes[xPos, zPos].First; // note: this refers to a LinkedListNode<T>, not a CrustNode
         for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
         {
             if (!currentNode.Value.IsVirtual)
             {
                 if (oneNonVirtual) { oneNonVirtual = false; break; } //multiple non-virtual nodes, break and go to plate interaction logic
-                else { oneNonVirtual = true; }
+                else
+                {
+                    oneNonVirtual = true;
+                    nonVirtualHeight = currentNode.Value.Height;
+                }
             }
             currentNode = currentNode.Next;
         }
@@ -915,6 +922,20 @@ public class Crust
                 if (currentNode.Value.IsVirtual)
                 {
                     currentNode.Value.Height = currentNode.Value.Height - subductionFactor; //subduct downwards
+                    
+                    //If the subducting plate is deep enough, random chance of new volcano
+                    if (movedCrustNodes[xPos, zPos].Last.Value.Height < nonVirtualHeight - subductionVolcanoDepthThreshold)
+                    {
+                        float chance = Random.Range(0.0f, 1.0f);
+                        if (chance > 0.999f)
+                        {
+                            Volcano v = ObjectPooler.current.GetPooledVolcano();
+                            v.X = xPos;
+                            v.Z = zPos;
+                            v.MaterialRate = Random.Range(30, 60); //How many rocks get thrown out of the volcano each frame
+                            this.AddStratoVolcano(v); //steep sided volcano
+                        }
+                    }
                 }
                 currentNode = currentNode.Next;
             }
@@ -1134,20 +1155,6 @@ public class Crust
                     movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = true;
                     movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - subductionFactor; //subduct downwards
                     subductedHeight = movedCrustNodes[xPos, zPos].Last.Value.Height;
-                }
-
-                //If the subducting plate is deep enough, random chance of new volcano
-                if (movedCrustNodes[xPos, zPos].Last.Value.Height < baseHeight * 0.3f)
-                {
-                    float chance = Random.Range(0.0f, 1.0f);
-                    if (chance > 0.999f)
-                    {
-                        Volcano v = ObjectPooler.current.GetPooledVolcano();
-                        v.X = xPos;
-                        v.Z = zPos;
-                        v.MaterialRate = Random.Range(30, 60); //How many rocks get thrown out of the volcano each frame
-                        this.AddStratoVolcano(v); //steep sided volcano
-                    }
                 }
             }
         }
