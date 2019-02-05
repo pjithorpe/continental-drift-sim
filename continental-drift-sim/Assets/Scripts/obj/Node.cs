@@ -17,7 +17,11 @@ public class CrustNode : PoolableObject
     public Plate Plate
     {
         get { return this.plate; }
-        set { this.plate = value; }
+        set
+        {
+            this.plate = value;
+            plate.NodeCount++;
+        }
     }
 
     public float Height
@@ -55,6 +59,7 @@ public class CrustNode : PoolableObject
         this.x = nodeToCopy.X;
         this.z = nodeToCopy.Z;
         this.plate = nodeToCopy.Plate;
+        plate.NodeCount++;
         this.height = nodeToCopy.Height;
         this.density = nodeToCopy.Density;
         this.isVirtual = nodeToCopy.IsVirtual;
@@ -63,6 +68,7 @@ public class CrustNode : PoolableObject
     public override void CleanObject()
     {
         height = density = z = x = 0;
+        plate.NodeCount--;
         plate = null;
     }
 }

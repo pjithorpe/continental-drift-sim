@@ -359,7 +359,7 @@ public class Crust
         {
             plates[i] = new Plate();
             plates[i].DefaultHeight = Random.Range(1.0f, 5.0f);
-            plates[i].Density = Random.Range(0.0f, 1.0f);
+            plates[i].Density = Random.Range(0.4f, 1.0f);
             this.AddPlate(plates[i]);
 
             //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
@@ -509,7 +509,14 @@ public class Crust
                 }
             }
         }
-        
+
+        //
+        for (int i = 0; i < plateCount; i++)
+        {
+            plates[i].RecalculateMass();
+            //Debug.Log("nodes: " + plates[i].NodeCount.ToString() + "density: " + plates[i].Density.ToString() + "mass: " + plates[i].Mass.ToString());
+        }
+
 
         var newNodes = new List<CrustNode>[width, height];
 
@@ -841,8 +848,14 @@ public class Crust
                 }
             }
         }
-    }
 
+        // update plate speeds
+        for (int p = 0; p < plates.Length; p++)
+        {
+            plates[p].ApplyVectorAffectors();
+            plates[p].RecalculateMass();
+        }
+    }
 
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
@@ -971,12 +984,13 @@ public class Crust
         }
     }
 
-    private void CollidePlates(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts)
+    private void CollidePlates(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts) //TODO: None of these methods properly consider Virtual nodes yet (need to change this!)
     {
         bool hasOceanic = false, hasContinental = false, hasMultipleOc = false, hasMultipleCo = false;
         var currentNode = movedCrustNodes[xPos, zPos].First;
         for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
         {
+            //count oceanic/continental
             if (currentNode.Value.Plate.Type == PlateType.Oceanic)
             {
                 if (hasOceanic != true) { hasOceanic = true; }
@@ -987,6 +1001,22 @@ public class Crust
                 if (hasContinental != true) { hasContinental = true; }
                 else { hasMultipleCo = true; }
             }
+
+
+            //also (if non-virtual), cause nodes to affect eachother's plate's speeds
+            if (!currentNode.Value.IsVirtual)
+            {
+                var affectedNode = movedCrustNodes[xPos, zPos].First;
+                for (int n = 0; n < movedCrustNodes[xPos, zPos].Count; n++)
+                {
+                    if (n != k) // don't affect itself
+                    {
+                        affectedNode.Value.Plate.AffectPlateVector(currentNode.Value.Plate);
+                    }
+                    affectedNode = affectedNode.Next;
+                }
+            }
+
             currentNode = currentNode.Next;
         }
 

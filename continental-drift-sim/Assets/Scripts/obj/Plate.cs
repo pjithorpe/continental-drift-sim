@@ -1,10 +1,13 @@
 ﻿using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 
 public class Plate
 {
     // field private vars
     private float defaultHeight = 5.0f;
+    private int nodeCount = 0;
+    private float mass = 0f;
     private float xSpeed = 0;
 	private float zSpeed = 0;
 	private float absoluteInverseXSpeed = 0;
@@ -19,11 +22,13 @@ public class Plate
     //not (get/set)able
 	private int xMoveCounter = 0;
 	private int zMoveCounter = 0;
+    private Dictionary<Plate, int> affectors;
 
     public Plate(float defaultHeight = 5.0f, Crust crust = null)
     {
         this.defaultHeight = defaultHeight;
         if (crust != null) { crust.AddPlate(this); }
+        affectors = new Dictionary<Plate, int>();
     }
 
 
@@ -31,6 +36,16 @@ public class Plate
     {
         get { return this.defaultHeight; }
         set { this.defaultHeight = value; }
+    }
+    public int NodeCount //number of nodes
+    {
+        get { return this.nodeCount; }
+        set { this.nodeCount = value; }
+    }
+    public float Mass //number of nodes * density
+    {
+        get { return this.mass; }
+        set { this.mass = value; }
     }
 
     public int XSpeed
@@ -106,6 +121,11 @@ public class Plate
     }
 
 
+    public void RecalculateMass()
+    {
+        mass = nodeCount * density;
+    }
+
 	public void RegisterMovement()
 	{
 		xMoveCounter++;
@@ -138,6 +158,37 @@ public class Plate
 	{
 		return checkMoveZ;
 	}
+
+    public void AffectPlateVector(Plate affectorPlate) //add density to this system later
+    {
+        if (affectors.ContainsKey(affectorPlate))
+        {
+            affectors[affectorPlate]++;
+        }
+        else
+        {
+            affectors.Add(affectorPlate, 0);
+        }
+    }
+    public void ApplyVectorAffectors()
+    {
+        foreach(Plate p in affectors.Keys)
+        {
+            //Calculate force
+            float proportionOfMass = (affectors[p] * p.Density) / p.Mass;
+            float scaledAffectorXMomentum = proportionOfMass * p.AccurateXSpeed;
+            float scaledAffectorZMomentum = proportionOfMass * p.AccurateZSpeed;
+
+            //Apply force to plate
+            float massRatioBetweenPlates = p.mass / this.mass;
+            this.AccurateXSpeed += (scaledAffectorXMomentum * massRatioBetweenPlates);
+            this.AccurateZSpeed += (scaledAffectorZMomentum * massRatioBetweenPlates);
+
+            //Apply equal and opposite force to affector plate
+            p.AccurateXSpeed -= scaledAffectorXMomentum;
+            p.AccurateZSpeed -= scaledAffectorZMomentum;
+        }
+    }
 }
 
 public enum PlateType
