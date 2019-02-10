@@ -197,9 +197,17 @@ public class Plate
             p.AccurateZSpeed -= scaledAffectorZMomentum;
         }
 
-        AccurateXSpeed += (AccurateXSpeed * 0.0001f) * energyBoostCount;
-        AccurateZSpeed += (AccurateZSpeed * 0.0001f) * energyBoostCount;
-        energyBoostCount = 0;
+        // speed boost = current speed * (no. of boosting nodes / total nodes in plate) * boost constant
+        if(energyBoostCount != 0)
+        {
+            float boostFactor = 8f * ((float)energyBoostCount / (float)nodeCount);
+            float xBoostAmount = AccurateXSpeed * boostFactor;
+            float zBoostAmount = AccurateZSpeed * boostFactor;
+
+            AccurateXSpeed += xBoostAmount;
+            AccurateZSpeed += zBoostAmount;
+            energyBoostCount = 0;
+        }
     }
 }
 

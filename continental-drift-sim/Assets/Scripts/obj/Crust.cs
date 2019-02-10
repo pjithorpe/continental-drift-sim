@@ -74,7 +74,7 @@ public class Crust
         subductionFactor = maxHeight * 0.05f;
         subductionVolcanoDepthThreshold = maxHeight * 0.15f;
 
-        shieldRockSize = maxHeight / 20f;
+        shieldRockSize = maxHeight / 22f;
         shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
         shieldRockSize = maxHeight / 8f;
         shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
@@ -795,7 +795,7 @@ public class Crust
 
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
-        EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
+        EruptVolcanos(shieldVolcanos, maxAge: 4, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 4, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
         EruptVolcanos(stratoVolcanos, 5, 3, 1, 5, stratoRockSize, stratoHeightSimilarityEpsilon, updateCoords: true);
 
         mesh.vertices = verts;
@@ -864,7 +864,7 @@ public class Crust
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.8f;
+        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.6f;
         crustNodes[xPos, zPos][0].Plate.AffectPlateVector();
 
         //If the rift has become deep enough, random chance of new volcano
@@ -1072,6 +1072,10 @@ public class Crust
             currentNode = movedCrustNodes[xPos, zPos].First;
             for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
             {
+                //IGNORE THIS FOR NOW: Send out a pulse from this node matching the direction of the faster plate (could change this later to consider weight/density/force etc)
+
+
+                //Add all present plates to dict to be used later for plate assignment
                 if (!singlePlateSpacesCounts.ContainsKey(currentNode.Value.Plate))
                 {
                     singlePlateSpacesCounts.Add(currentNode.Value.Plate, 0);
