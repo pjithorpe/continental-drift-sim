@@ -23,6 +23,7 @@ public class Plate
 	private int xMoveCounter = 0;
 	private int zMoveCounter = 0;
     private Dictionary<Plate, int> affectors;
+    private int energyBoostCount = 0;
 
     public Plate(float defaultHeight = 5.0f, Crust crust = null)
     {
@@ -159,15 +160,22 @@ public class Plate
 		return checkMoveZ;
 	}
 
-    public void AffectPlateVector(Plate affectorPlate) //add density to this system later
+    public void AffectPlateVector(Plate affectorPlate = null) //null for effects which increase plate speed that aren't a result of interacting with another plate
     {
-        if (affectors.ContainsKey(affectorPlate))
+        if (affectorPlate != null)
         {
-            affectors[affectorPlate]++;
+            if (affectors.ContainsKey(affectorPlate))
+            {
+                affectors[affectorPlate]++;
+            }
+            else
+            {
+                affectors.Add(affectorPlate, 0);
+            }
         }
         else
         {
-            affectors.Add(affectorPlate, 0);
+            energyBoostCount++; //artificially add energy to plate
         }
     }
     public void ApplyVectorAffectors()
@@ -188,6 +196,10 @@ public class Plate
             p.AccurateXSpeed -= scaledAffectorXMomentum;
             p.AccurateZSpeed -= scaledAffectorZMomentum;
         }
+
+        AccurateXSpeed += (AccurateXSpeed * 0.0001f) * energyBoostCount;
+        AccurateZSpeed += (AccurateZSpeed * 0.0001f) * energyBoostCount;
+        energyBoostCount = 0;
     }
 }
 

@@ -40,8 +40,10 @@ public class Crust
     private float subductionVolcanoDepthThreshold; // how deep below the surface a subducting plate needs to be before it can produce surface volcanos
 
     //volcanos
-    float rockSize;
-    float heightSimilarityEpsilon; //in the particle deposition algoorithm, if heights are this distance away from eachother, they will be considered equal
+    float shieldRockSize;
+    float stratoRockSize;
+    float shieldHeightSimilarityEpsilon; //in the particle deposition algoorithm, if heights are this distance away from eachother, they will be considered equal
+    float stratoHeightSimilarityEpsilon;
 
     /* Remove this when the temporary code in update mesh is removed --> */
     Plate p = new Plate(defaultHeight: 0.0f);
@@ -72,8 +74,10 @@ public class Crust
         subductionFactor = maxHeight * 0.05f;
         subductionVolcanoDepthThreshold = maxHeight * 0.15f;
 
-        rockSize = maxHeight / 9f;
-        heightSimilarityEpsilon = rockSize * 0.2f;
+        shieldRockSize = maxHeight / 20f;
+        shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
+        shieldRockSize = maxHeight / 8f;
+        shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
         this.AddPlate(p);
@@ -514,7 +518,7 @@ public class Crust
         for (int i = 0; i < plateCount; i++)
         {
             plates[i].RecalculateMass();
-            //Debug.Log("nodes: " + plates[i].NodeCount.ToString() + "density: " + plates[i].Density.ToString() + "mass: " + plates[i].Mass.ToString());
+            // Debug.Log("nodes: " + plates[i].NodeCount.ToString() + "density: " + plates[i].Density.ToString() + "mass: " + plates[i].Mass.ToString());
         }
 
 
@@ -791,8 +795,8 @@ public class Crust
 
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
-        EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2);
-        EruptVolcanos(stratoVolcanos, 5, 3, 1, 5, updateCoords: true);
+        EruptVolcanos(shieldVolcanos, maxAge: 10, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 2, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
+        EruptVolcanos(stratoVolcanos, 5, 3, 1, 5, stratoRockSize, stratoHeightSimilarityEpsilon, updateCoords: true);
 
         mesh.vertices = verts;
         mesh.colors = colors;
@@ -860,30 +864,31 @@ public class Crust
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.6f;
+        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.8f;
+        crustNodes[xPos, zPos][0].Plate.AffectPlateVector();
 
         //If the rift has become deep enough, random chance of new volcano
-        if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.2f)
+        if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.25f)
         {
             float chance = Random.Range(0.0f, 1.0f);
-            if (chance > 0.995f) // 1 in 1000 chance
+            if (chance > 0.95f) // 1 in 1000 chance
             {
-                if (chance > 0.9999f) // 1 in 1000 chance
+                /*if (chance > 0.9999f) // 1 in 1000 chance
                 {
                     Volcano v = ObjectPooler.current.GetPooledVolcano();
                     v.X = xPos;
                     v.Z = zPos;
-                    v.MaterialRate = 1000; //How many rocks get thrown out of the volcano each frame
+                    v.MaterialRate = 500; //How many rocks get thrown out of the volcano each frame
                     this.AddStratoVolcano(v);
                 }
                 else
-                {
+                {*/
                     Volcano v = ObjectPooler.current.GetPooledVolcano();
                     v.X = xPos;
                     v.Z = zPos;
-                    v.MaterialRate = Random.Range(50, 80); //How many rocks get thrown out of the volcano each frame
+                    v.MaterialRate = 50; //How many rocks get thrown out of the volcano each frame
                     this.AddShieldVolcano(v);
-                }
+                //}
             }
         }
     }
@@ -1193,7 +1198,7 @@ public class Crust
 
 
     //Implemented using particle deposition
-    private void EruptVolcanos(List<Volcano> volcanos, int maxAge, int maxSearchRange, int maxElevationThreshold, int dropZoneRadius, bool updateCoords = false)
+    private void EruptVolcanos(List<Volcano> volcanos, int maxAge, int maxSearchRange, int maxElevationThreshold, int dropZoneRadius, float rockSize, float heightSimilarityEpsilon, bool updateCoords = false)
     {
         for (int v = 0; v < volcanos.Count; v++)
         {
