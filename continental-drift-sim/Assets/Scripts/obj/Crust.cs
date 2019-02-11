@@ -210,7 +210,7 @@ public class Crust
 
                 float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
 
-                float y = BaseHeight + (maxHeight * perlinNoise);
+                float y = BaseHeight + (0.7f * maxHeight * perlinNoise);
 
                 if (zPos % 2 == 0)
                 {
@@ -651,107 +651,89 @@ public class Crust
     {
         MoveNodes(); // for every node, move it based on its plate's speed
 
-        //debug
-        /*
-        int emptyMovedNodesCount = 0;
-        int singleMovedNodesCount = 0;
-        int multipleMovedNodesCount = 0;
+        //Sort out empty regions first (cause by constructive margins)
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
-                if (movedCrustNodes[j,i].Count == 0)
+                if (movedCrustNodes[j, i].Count == 0) // NO PLATE assigned to this space, start creating a rift
                 {
-                    emptyMovedNodesCount++;
-                }
-                else if (movedCrustNodes[j,i].Count == 1)
-                {
-                    singleMovedNodesCount++;
-                }
-                else
-                {
-                    multipleMovedNodesCount++;
+                    CreateNewCrustMaterial(j, i);
                 }
             }
         }
-        Debug.Log("Empty moved nodes count: " + emptyMovedNodesCount.ToString());
-        Debug.Log("Single moved nodes count: " + singleMovedNodesCount.ToString());
-        Debug.Log("Multiple moved nodes count: " + multipleMovedNodesCount.ToString());
-        */
-        //end debug
-        
+
         int listLength;
         for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
-                if (movedCrustNodes[j,i].Count == 0) // NO PLATE assigned to this space, start creating a rift
+                if (movedCrustNodes[j,i].Count != 0)
                 {
-                    CreateNewCrustMaterial(j, i);
-                }
-                else if (movedCrustNodes[j,i].Count == 1) // ONE PLATE assigned to this space
-                {
-                    BasicCrustMove(j, i);
-                }
-                else // MORE THAN ONE PLATE assigned to this space
-                {
-                    //clear plate searching dict
-                    singlePlateSpacesCounts.Clear();
+                    if (movedCrustNodes[j, i].Count == 1) // ONE PLATE assigned to this space
+                    {
+                        BasicCrustMove(j, i);
+                    }
+                    else // MORE THAN ONE PLATE assigned to this space
+                    {
+                        //clear plate searching dict
+                        singlePlateSpacesCounts.Clear();
 
-                    PlateInteraction(j, i, ref singlePlateSpacesCounts);
-                }
+                        PlateInteraction(j, i, ref singlePlateSpacesCounts);
+                    }
 
-                //Apply changes to corresponding vertex
-                int vertIndex = j + (i * width);
-                if (i % 2 == 0)
-                {
-                    verts[vertIndex].x = j * triWidth;
-                    verts[vertIndex].y = crustNodes[j, i][0].Height;
-                    verts[vertIndex].z = i * triHeight;
-                }
-                else
-                {
-                    verts[vertIndex].x = (j * triWidth) + halfTriWidth;
-                    verts[vertIndex].y = crustNodes[j, i][0].Height;
-                    verts[vertIndex].z = i * triHeight;
-                }
+                    //Apply changes to corresponding vertex
+                    int vertIndex = j + (i * width);
+                    if (i % 2 == 0)
+                    {
+                        verts[vertIndex].x = j * triWidth;
+                        verts[vertIndex].y = crustNodes[j, i][0].Height;
+                        verts[vertIndex].z = i * triHeight;
+                    }
+                    else
+                    {
+                        verts[vertIndex].x = (j * triWidth) + halfTriWidth;
+                        verts[vertIndex].y = crustNodes[j, i][0].Height;
+                        verts[vertIndex].z = i * triHeight;
+                    }
 
-                float h = verts[vertIndex].y;
-                float normalisedHeight = (h - baseHeight) / maxHeight;
-                //debug (for continental or oceanic)
-                /*if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
-                {
-                    colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
-                }
-                else
-                {
-                    colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
-                }*/
-                //end debug
+                    float h = verts[vertIndex].y;
+                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    //debug (for continental or oceanic)
+                    /*if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
+                    {
+                        colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
+                    }
+                    else
+                    {
+                        colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
+                    }*/
+                    //end debug
 
-                //debug (for number of nodes at vertex)
-                if (crustNodes[j,i].Count == 1)
-                {
-                    colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
-                }
-                else if (crustNodes[j, i].Count == 2)
-                {
-                    colors[vertIndex] = Color.green;
-                }
-                else if (crustNodes[j, i].Count == 3)
-                {
-                    colors[vertIndex] = Color.yellow;
-                }
-                else if (crustNodes[j, i].Count == 4)
-                {
-                    colors[vertIndex] = Color.red;
-                }
-                else if (crustNodes[j, i].Count > 4)
-                {
-                    colors[vertIndex] = Color.black;
-                }
+                    //debug (for number of nodes at vertex)
+                    if (crustNodes[j, i].Count == 1)
+                    {
+                        colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
+                    }
+                    else if (crustNodes[j, i].Count == 2)
+                    {
+                        colors[vertIndex] = Color.green;
+                    }
+                    else if (crustNodes[j, i].Count == 3)
+                    {
+                        colors[vertIndex] = Color.yellow;
+                    }
+                    else if (crustNodes[j, i].Count == 4)
+                    {
+                        colors[vertIndex] = Color.red;
+                    }
+                    else if (crustNodes[j, i].Count > 4)
+                    {
+                        colors[vertIndex] = Color.black;
+                    }
 
-                //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                    //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                }
             }
         }
 
@@ -769,30 +751,8 @@ public class Crust
                     currentNode = currentNode.Next;
                     movedCrustNodes[j, i].Remove(nodeToDelete);
                 }
-
-                //temp
-                /*
-                if (crustNodes[j, i] == null)
-                {
-                    crustNodes[j, i] = new List<CrustNode>();
-                    crustNodes[j, i].Add(new CrustNode(j, i));
-                    crustNodes[j, i][0].Density = 0.1f;
-                    crustNodes[j, i][0].Height = 100.0f;
-                    numberOfNullNodes++;
-                }
-                if (crustNodes[j, i][0].Plate == null)
-                {
-                    crustNodes[j, i][0].Plate = p;
-                    Debug.Log("null plate: " + j.ToString() + " " + i.ToString());
-                    numberOfNodesWithNoPlate++;
-                }
-                */
-                //endtemp
             }
         }
-        /*Debug.Log("Null nodes = " + numberOfNullNodes.ToString());
-        Debug.Log("Nodes with no plate = " + numberOfNodesWithNoPlate.ToString());*/
-
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
         EruptVolcanos(shieldVolcanos, maxAge: 4, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 4, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
@@ -873,24 +833,20 @@ public class Crust
             float chance = Random.Range(0.0f, 1.0f);
             if (chance > 0.95f) // 1 in 1000 chance
             {
-                /*if (chance > 0.9999f) // 1 in 1000 chance
-                {
-                    Volcano v = ObjectPooler.current.GetPooledVolcano();
-                    v.X = xPos;
-                    v.Z = zPos;
-                    v.MaterialRate = 500; //How many rocks get thrown out of the volcano each frame
-                    this.AddStratoVolcano(v);
-                }
-                else
-                {*/
-                    Volcano v = ObjectPooler.current.GetPooledVolcano();
-                    v.X = xPos;
-                    v.Z = zPos;
-                    v.MaterialRate = 50; //How many rocks get thrown out of the volcano each frame
-                    this.AddShieldVolcano(v);
-                //}
+                Volcano v = ObjectPooler.current.GetPooledVolcano();
+                v.X = xPos;
+                v.Z = zPos;
+                v.MaterialRate = 50; //How many rocks get thrown out of the volcano each frame
+                this.AddShieldVolcano(v);
             }
         }
+
+        //Finally, add the node to the movedNodes array so that there aren't empty spots which will cause errors for other interactions
+        var newNode = ObjectPooler.current.GetPooledNode();
+        newNode.Copy(crustNodes[xPos, zPos][0]); //dereference
+        newNode.X = xPos;
+        newNode.Z = zPos;
+        movedCrustNodes[xPos, zPos].AddLast(newNode);
     }
 
     private void BasicCrustMove(int xPos, int zPos)
@@ -1070,10 +1026,17 @@ public class Crust
         {
             //TEMPORARY, JUST USE THE OLD NAIVE CRUNCH
             currentNode = movedCrustNodes[xPos, zPos].First;
+            CrustNode fastestPlateNode = null;
+            float highestAggregateVelocity = 0f;
             for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
             {
-                //IGNORE THIS FOR NOW: Send out a pulse from this node matching the direction of the faster plate (could change this later to consider weight/density/force etc)
-
+                //find fastest plate
+                float aggregateVelocity = Math.Abs(currentNode.Value.Plate.AccurateXSpeed) + Math.Abs(currentNode.Value.Plate.AccurateZSpeed);
+                if (aggregateVelocity > highestAggregateVelocity)
+                {
+                    fastestPlateNode = currentNode.Value;
+                    highestAggregateVelocity = aggregateVelocity;
+                }
 
                 //Add all present plates to dict to be used later for plate assignment
                 if (!singlePlateSpacesCounts.ContainsKey(currentNode.Value.Plate))
@@ -1083,6 +1046,86 @@ public class Crust
                 currentNode = currentNode.Next;
             }
 
+            currentNode = movedCrustNodes[xPos, zPos].First;
+            for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
+            {
+                if (currentNode.Value != fastestPlateNode)
+                {
+                    //add together the speeds of both plates relative to eachother to see how big the impact and resultant crumpling should be
+                    float comparativeX = fastestPlateNode.Plate.AccurateXSpeed - currentNode.Value.Plate.AccurateXSpeed; // (we flip the smaller vector for comparison)
+                    float comparativeZ = fastestPlateNode.Plate.AccurateZSpeed - currentNode.Value.Plate.AccurateZSpeed;
+
+                    //now get the magnitude of this comparison vector and this will represent the power of the collision
+                    float collisionMagnitude = Mathf.Sqrt(comparativeX * comparativeX + comparativeZ * comparativeZ);
+
+                    //Send out a pulse from this node in the opposite direction to the movement of the slower plate (could change all this later to consider weight/density/force etc)
+                    int pulseDistance = Mathf.RoundToInt(collisionMagnitude) * 20;
+                    int halfPulseDistance = pulseDistance / 2;
+                    int xLoc = xPos;
+                    int zLoc = zPos;
+                    int dx = 1;
+                    int dz = 1;
+                    int moveCount = 0;
+
+                    if (currentNode.Value.Plate.AccurateXSpeed < 0)
+                    {
+                        dx = -1;
+                    }
+                    if (currentNode.Value.Plate.AccurateZSpeed < 0)
+                    {
+                        dz = -1;
+                    }
+
+                    if (currentNode.Value.Plate.ScaledVectorX == 1f)
+                    {
+                        for (int p = 0; p < pulseDistance; p++)
+                        {
+                            moveCount++;
+
+                            xLoc += dx;
+                            xLoc = xLoc % width;
+                            if (xLoc < 0) { xLoc = width + xLoc; }
+
+                            if (moveCount >= (1.0f / currentNode.Value.Plate.ScaledVectorZ))
+                            {
+                                zLoc += dz;
+                                zLoc = zLoc % height;
+                                if (zLoc < 0) { zLoc = height + zLoc; }
+
+                                moveCount = 0;
+                            }
+
+                            movedCrustNodes[xLoc, zLoc].First.Value.Height += ((maxHeight - movedCrustNodes[xLoc, zLoc].First.Value.Height) * 0.1f * (halfPulseDistance - Math.Abs(p - halfPulseDistance)));
+                        }
+                    }
+                    else
+                    {
+                        for (int p = 0; p < pulseDistance; p++)
+                        {
+                            moveCount++;
+
+                            zLoc += dz;
+                            zLoc = zLoc % height;
+                            if (zLoc < 0) { zLoc = height + zLoc; }
+
+                            if (moveCount >= (1.0f / currentNode.Value.Plate.ScaledVectorX))
+                            {
+                                xLoc += dx;
+                                xLoc = xLoc % width;
+                                if (xLoc < 0) { xLoc = width + xLoc; }
+
+                                moveCount = 0;
+                            }
+
+                            movedCrustNodes[xLoc, zLoc].First.Value.Height += ((maxHeight - movedCrustNodes[xLoc,zLoc].First.Value.Height) * 0.1f * (halfPulseDistance - Math.Abs(p - halfPulseDistance)));
+
+                        }
+                    }
+                }
+            }
+
+
+            //assign nodes to plates
             int searchDistance = 0;
             bool found = false;
             while (!found)
@@ -1160,7 +1203,6 @@ public class Crust
             }
 
             movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
-            movedCrustNodes[xPos, zPos].First.Value.Height = crustNodes[xPos, zPos][0].Height * 1.02f; //Increase height as a result of collision (naive)
         }
         //if C-O, oceanic subducts
         else

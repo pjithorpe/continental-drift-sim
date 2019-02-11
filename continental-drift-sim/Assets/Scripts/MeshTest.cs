@@ -73,14 +73,14 @@ public class MeshTest : MonoBehaviour {
             {
                 testCrust.Plates[i].AccurateXSpeed = Random.Range(-2f, 2f);
                 testCrust.Plates[i].AccurateZSpeed = Random.Range(-2f, 2f);
-                if (Random.Range(0.0f, 1.0f) > 0.5f)
-                {
-                    testCrust.Plates[i].Type = PlateType.Oceanic;
-                }
-                else
-                {
+                //if (Random.Range(0.0f, 1.0f) > 0.5f)
+                //{
+                //    testCrust.Plates[i].Type = PlateType.Oceanic;
+                //}
+                //else
+                //{
                     testCrust.Plates[i].Type = PlateType.Continental;
-                }
+                //}
             }
 
             sliderProgress += (0.2f / testCrust.Plates.Length);

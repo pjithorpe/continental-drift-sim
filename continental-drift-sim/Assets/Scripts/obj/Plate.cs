@@ -12,6 +12,8 @@ public class Plate
 	private float zSpeed = 0;
 	private float absoluteInverseXSpeed = 0;
 	private float absoluteInverseZSpeed = 0;
+    private float scaledVectorX; //scaled so that one of the axis is = 1
+    private float scaledVectorZ;
 	private bool checkMoveX = false;
 	private bool checkMoveZ = false;
     private float density = 0.0f;
@@ -92,6 +94,7 @@ public class Plate
 		{
 			this.xSpeed = value;
 			absoluteInverseXSpeed = Mathf.Abs(1f / xSpeed);
+            RecalculateScaledVector();
 		}
 	}
 	public float AccurateZSpeed
@@ -100,9 +103,26 @@ public class Plate
 		set
 		{
 			this.zSpeed = value;
-			absoluteInverseZSpeed = Mathf.Abs(1f / zSpeed);
-		}
-	}
+            absoluteInverseZSpeed = Mathf.Abs(1f / zSpeed);
+            RecalculateScaledVector();
+        }
+    }
+    public float AbsoluteInverseXSpeed
+    {
+        get { return this.absoluteInverseXSpeed; }
+    }
+    public float AbsoluteInverseZSpeed
+    {
+        get { return this.absoluteInverseZSpeed; }
+    }
+    public float ScaledVectorX
+    {
+        get { return this.scaledVectorX; }
+    }
+    public float ScaledVectorZ
+    {
+        get { return this.scaledVectorZ; }
+    }
 
     public float Density
     {
@@ -121,6 +141,21 @@ public class Plate
         set { this.crust = value; }
     }
 
+
+
+    private void RecalculateScaledVector()
+    {
+        if (xSpeed > zSpeed)
+        {
+            scaledVectorX = 1f;
+            scaledVectorZ = Mathf.Abs(zSpeed / xSpeed);
+        }
+        else
+        {
+            scaledVectorX = Mathf.Abs(xSpeed / zSpeed);
+            scaledVectorZ = 1f;
+        }
+    }
 
     public void RecalculateMass()
     {
