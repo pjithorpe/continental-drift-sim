@@ -27,7 +27,7 @@ public class ObjectPooler : MonoBehaviour
         pooledVolcanos = new Stack<Volcano>(pooledVolcanoAmount);
         for (int i=0; i<pooledVolcanoAmount; i++)
         {
-            Volcano volcano = new Volcano(0,0,null);
+            Volcano volcano = new Volcano(0,0,null,null);
             pooledVolcanos.Push(volcano);
         }
     }

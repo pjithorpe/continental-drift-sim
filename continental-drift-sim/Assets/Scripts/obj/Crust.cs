@@ -76,8 +76,8 @@ public class Crust
 
         shieldRockSize = maxHeight / 22f;
         shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
-        shieldRockSize = maxHeight / 8f;
-        shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
+        stratoRockSize = maxHeight / 6f;
+        stratoHeightSimilarityEpsilon = stratoRockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
         this.AddPlate(p);
@@ -700,22 +700,18 @@ public class Crust
                     float h = verts[vertIndex].y;
                     float normalisedHeight = (h - baseHeight) / maxHeight;
                     //debug (for continental or oceanic)
-                    /*if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
+                    if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
                     {
                         colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
                     }
                     else
                     {
                         colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
-                    }*/
+                    }
                     //end debug
 
                     //debug (for number of nodes at vertex)
-                    if (crustNodes[j, i].Count == 1)
-                    {
-                        colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
-                    }
-                    else if (crustNodes[j, i].Count == 2)
+                    if (crustNodes[j, i].Count == 2)
                     {
                         colors[vertIndex] = Color.green;
                     }
@@ -756,7 +752,7 @@ public class Crust
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
         EruptVolcanos(shieldVolcanos, maxAge: 4, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 4, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
-        EruptVolcanos(stratoVolcanos, 5, 3, 1, 5, stratoRockSize, stratoHeightSimilarityEpsilon, updateCoords: true);
+        EruptVolcanos(stratoVolcanos, 2, 2, 2, 3, stratoRockSize, stratoHeightSimilarityEpsilon);
 
         mesh.vertices = verts;
         mesh.colors = colors;
@@ -831,7 +827,7 @@ public class Crust
         if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.25f)
         {
             float chance = Random.Range(0.0f, 1.0f);
-            if (chance > 0.95f) // 1 in 1000 chance
+            if (chance > 0.95f) // 1 in 20 chance
             {
                 Volcano v = ObjectPooler.current.GetPooledVolcano();
                 v.X = xPos;
@@ -901,7 +897,7 @@ public class Crust
                     if (movedCrustNodes[xPos, zPos].Last.Value.Height < nonVirtualHeight - subductionVolcanoDepthThreshold)
                     {
                         float chance = Random.Range(0.0f, 1.0f);
-                        if (chance > 0.999f)
+                        if (chance > 0.99999f)
                         {
                             Volcano v = ObjectPooler.current.GetPooledVolcano();
                             v.X = xPos;
@@ -1049,7 +1045,7 @@ public class Crust
             currentNode = movedCrustNodes[xPos, zPos].First;
             for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
             {
-                if (currentNode.Value != fastestPlateNode)
+                if (currentNode.Value != fastestPlateNode && Random.Range(0.0f, 1.0f) > 0.99f)
                 {
                     //add together the speeds of both plates relative to eachother to see how big the impact and resultant crumpling should be
                     float comparativeX = fastestPlateNode.Plate.AccurateXSpeed - currentNode.Value.Plate.AccurateXSpeed; // (we flip the smaller vector for comparison)
@@ -1059,7 +1055,7 @@ public class Crust
                     float collisionMagnitude = Mathf.Sqrt(comparativeX * comparativeX + comparativeZ * comparativeZ);
 
                     //Send out a pulse from this node in the opposite direction to the movement of the slower plate (could change all this later to consider weight/density/force etc)
-                    int pulseDistance = Mathf.RoundToInt(collisionMagnitude) * 20;
+                    int pulseDistance = Mathf.RoundToInt(collisionMagnitude) * Random.Range(100,201);
                     int halfPulseDistance = pulseDistance / 2;
                     int xLoc = xPos;
                     int zLoc = zPos;
@@ -1094,8 +1090,6 @@ public class Crust
 
                                 moveCount = 0;
                             }
-
-                            movedCrustNodes[xLoc, zLoc].First.Value.Height += ((maxHeight - movedCrustNodes[xLoc, zLoc].First.Value.Height) * 0.1f * (halfPulseDistance - Math.Abs(p - halfPulseDistance)));
                         }
                     }
                     else
@@ -1116,10 +1110,26 @@ public class Crust
 
                                 moveCount = 0;
                             }
-
-                            movedCrustNodes[xLoc, zLoc].First.Value.Height += ((maxHeight - movedCrustNodes[xLoc,zLoc].First.Value.Height) * 0.1f * (halfPulseDistance - Math.Abs(p - halfPulseDistance)));
-
                         }
+                    }
+
+                    if(Random.Range(0.0f, 1.0f) < 0.9f)
+                    {
+                        Volcano v = ObjectPooler.current.GetPooledVolcano();
+                        v.X = xPos;
+                        v.Z = zPos;
+                        v.Plate = currentNode.Value.Plate;
+                        v.MaterialRate = Random.Range(10, 150); //How many rocks get thrown out of the volcano each frame
+                        this.AddStratoVolcano(v);
+                    }
+                    else //random chance of a huge mountain
+                    {
+                        Volcano v = ObjectPooler.current.GetPooledVolcano();
+                        v.X = xPos;
+                        v.Z = zPos;
+                        v.Plate = currentNode.Value.Plate;
+                        v.MaterialRate = Random.Range(250, 300); //How many rocks get thrown out of the volcano each frame
+                        this.AddStratoVolcano(v);
                     }
                 }
             }
@@ -1414,6 +1424,10 @@ public class Crust
 
                     //drop the rock
                     crustNodes[currentX, currentZ][0].Height += rockSize;
+                    if (vol.Plate != null)
+                    {
+                        crustNodes[currentX, currentZ][0].Plate = vol.Plate;
+                    }
                 }
             }
 
