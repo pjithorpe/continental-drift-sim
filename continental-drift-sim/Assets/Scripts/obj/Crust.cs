@@ -35,6 +35,7 @@ public class Crust
     private Vector3[] verts;
     private int[] tris;
     private Color[] colors;
+    private float[] fractal;
     private LinkedList<CrustNode>[,] movedCrustNodes;
     private float subductionFactor;
     private float subductionVolcanoDepthThreshold; // how deep below the surface a subducting plate needs to be before it can produce surface volcanos
@@ -49,7 +50,7 @@ public class Crust
     Plate p = new Plate(defaultHeight: 0.0f);
 
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 1.7f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 5f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
     {
         this.width = width;
         this.height = height;
@@ -197,6 +198,9 @@ public class Crust
         int xPos;
         int zPos;
 
+        //Generate fractal landscape
+        GenerateFractal(width / 8);
+
         //Precalculating floats which are used in loop
         float perlinFraction = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
         float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
@@ -208,9 +212,11 @@ public class Crust
                 xPos = i % width;
                 zPos = i / width;
 
-                float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
+                //float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
 
-                float y = BaseHeight + (0.7f * maxHeight * perlinNoise);
+                //float y = 0.7f * maxHeight * perlinNoise;
+
+                float y = fractal[i] * maxHeight * 0.7f;
 
                 if (zPos % 2 == 0)
                 {
@@ -237,7 +243,6 @@ public class Crust
         {
             for (int i = 0; i < verts.Length; i++)
             {
-
                 xPos = i % width;
                 zPos = i / width;
 
@@ -347,6 +352,100 @@ public class Crust
         uv[3] = new Vector2(1, 1);
 
         mesh.uv = uv;*/
+    }
+
+    private float GetHeightAtPoint(int x, int z)
+    {
+        if (x < 0) { x = width + x; }
+        if (z < 0) { z = height + z; }
+
+        return fractal[(x % (width - 1)) + (z % (height - 1)) * width];
+    }
+
+    private void SetHeightAtPoint(int x, int z, float value)
+    {
+        if (x < 0) { x = width + x; }
+        if (z < 0) { z = height + z; }
+
+        fractal[(x % (width - 1)) + (z % (height - 1)) * width] = value;
+    }
+
+    private void SquareStep(int x, int z, int size, float value)
+    {
+        int halfSize = size / 2;
+
+        float a = GetHeightAtPoint(x - halfSize, z - halfSize);
+        float b = GetHeightAtPoint(x + halfSize, z - halfSize);
+        float c = GetHeightAtPoint(x - halfSize, z + halfSize);
+        float d = GetHeightAtPoint(x + halfSize, z + halfSize);
+
+        float meanHeight = (a + b + c + d) / 4.0f;
+        float adjustedHeight = meanHeight + value;
+
+        SetHeightAtPoint(x, z, adjustedHeight);
+    }
+
+    private void DiamondStep(int x, int z, int size, float value)
+    {
+        int halfSize = size / 2;
+
+        float a = GetHeightAtPoint(x - halfSize, z);
+        float b = GetHeightAtPoint(x + halfSize, z);
+        float c = GetHeightAtPoint(x, z - halfSize);
+        float d = GetHeightAtPoint(x, z + halfSize);
+
+        float meanHeight = (a + b + c + d) / 4.0f;
+        float adjustedHeight = meanHeight + value;
+
+        SetHeightAtPoint(x, z, adjustedHeight);
+    }
+
+    private void DiamondSquare(int stepSize, float scale)
+    {
+        int halfStep = stepSize / 2;
+        for (int z = halfStep; z < height + halfStep; z += stepSize)
+        {
+            for (int x = halfStep; x < width + halfStep; x += stepSize)
+            {
+                SquareStep(x, z, stepSize, Random.Range(-1.0f, 1.0f) * scale);
+            }
+        }
+
+        for (int z = 0; z < height; z += stepSize)
+        {
+            for (int x = 0; x < width; x += stepSize)
+            {
+                DiamondStep(x + halfStep, z, stepSize, Random.Range(-1.0f, 1.0f) * scale);
+                DiamondStep(x, z + halfStep, stepSize, Random.Range(-1.0f, 1.0f) * scale);
+            }
+        }
+    }
+
+    /*
+     * Generate a fractal map using diamond square algorithm and store in fractal[]
+     */
+    private void GenerateFractal(int featureSize)
+    {
+        fractal = new float[width * height];
+
+        for (int z = 0; z < height; z += featureSize)
+        {
+            for (int x = 0; x < height; x += featureSize)
+            {
+                SetHeightAtPoint(x, z, Random.Range(0.0f, maxHeight));
+            }
+        }
+
+        int sampleSize = featureSize;
+        float randomScale = 1.0f;
+
+        while (sampleSize > 1)
+        {
+            DiamondSquare(sampleSize, randomScale);
+
+            sampleSize = sampleSize / 2;
+            randomScale = randomScale / 2.0f;
+        }
     }
 
     /*
@@ -645,7 +744,7 @@ public class Crust
 
 
 
-    PlateType[] types = new PlateType[5];
+    MaterialType[] types = new MaterialType[5];
     Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
     public void UpdateMesh()
     {
@@ -700,7 +799,7 @@ public class Crust
                     float h = verts[vertIndex].y;
                     float normalisedHeight = (h - baseHeight) / maxHeight;
                     //debug (for continental or oceanic)
-                    if (crustNodes[j,i][0].Plate.Type == PlateType.Oceanic)
+                    if (crustNodes[j,i][0].Type == MaterialType.Oceanic)
                     {
                         colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
                     }
@@ -948,7 +1047,7 @@ public class Crust
         for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
         {
             //count oceanic/continental
-            if (currentNode.Value.Plate.Type == PlateType.Oceanic)
+            if (currentNode.Value.Type == MaterialType.Oceanic)
             {
                 if (hasOceanic != true) { hasOceanic = true; }
                 else { hasMultipleOc = true; }
@@ -1228,7 +1327,7 @@ public class Crust
             else // just one O and one C
             {
                 float subductedHeight;
-                if (movedCrustNodes[xPos, zPos].First.Value.Plate.Type == PlateType.Oceanic) //O,C
+                if (movedCrustNodes[xPos, zPos].First.Value.Type == MaterialType.Oceanic) //O,C
                 {
                     movedCrustNodes[xPos, zPos].First.Value.IsVirtual = true;
                     movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - subductionFactor; //subduct downwards

@@ -17,7 +17,6 @@ public class Plate
 	private bool checkMoveX = false;
 	private bool checkMoveZ = false;
     private float density = 0.0f;
-    private PlateType type;
     private Crust crust;
 
     // non-field definitions
@@ -129,11 +128,6 @@ public class Plate
         get { return this.density; }
         set { this.density = value; }
     }
-    public PlateType Type
-    {
-        get { return this.type; }
-        set { this.type = value; }
-    }
 
     public Crust Crust
     {
@@ -244,10 +238,4 @@ public class Plate
             energyBoostCount = 0;
         }
     }
-}
-
-public enum PlateType
-{
-    Oceanic,
-    Continental
 }

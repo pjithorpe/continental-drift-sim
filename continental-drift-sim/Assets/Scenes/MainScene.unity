@@ -330,8 +330,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   triWidth: 1
   triHeight: 1
-  meshWidth: 800
-  meshHeight: 800
+  meshWidth: 512
+  meshHeight: 512
   randomSeed: 999987
   plateCount: 14
   voronoiRelaxationSteps: 10
@@ -1029,7 +1029,7 @@ Camera:
   near clip plane: 0.3
   far clip plane: 51
   field of view: 44
-  orthographic: 1
+  orthographic: 0
   orthographic size: 2
   m_Depth: -1
   m_CullingMask:

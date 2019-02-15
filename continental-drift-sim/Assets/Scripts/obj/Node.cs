@@ -6,6 +6,7 @@ public class CrustNode : PoolableObject
     private float height;
     private float density;
     private int x, z;
+    private MaterialType type;
     private bool isVirtual;
 
     public CrustNode(int x, int z)
@@ -48,6 +49,12 @@ public class CrustNode : PoolableObject
         set { this.z = value; }
     }
 
+    public MaterialType Type
+    {
+        get { return this.type; }
+        set { this.type = value; }
+    }
+
     public bool IsVirtual
     {
         get { return this.isVirtual; }
@@ -71,4 +78,10 @@ public class CrustNode : PoolableObject
         plate.NodeCount--;
         plate = null;
     }
+}
+
+public enum MaterialType
+{
+    Oceanic,
+    Continental
 }
