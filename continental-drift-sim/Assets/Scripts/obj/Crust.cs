@@ -887,10 +887,10 @@ public class Crust
 
     private void CreateNewCrustMaterial(int xPos, int zPos)
     {
-        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.6f;
+        crustNodes[xPos, zPos][0].Height = crustNodes[xPos, zPos][0].Height * 0.8f;
         crustNodes[xPos, zPos][0].Plate.AffectPlateVector();
 
-        //If the rift has become deep enough, random chance of new volcano
+        //If the rift has become deep enough, random chance of new volcano, and start producing oceanic crust
         if(crustNodes[xPos, zPos][0].Height < seaLevel * 0.5f)
         {
             float chance = Random.Range(0.0f, 1.0f);
@@ -902,6 +902,8 @@ public class Crust
                 v.MaterialRate = 50; //How many rocks get thrown out of the volcano each frame
                 this.AddShieldVolcano(v);
             }
+
+            crustNodes[xPos, zPos][0].Type = MaterialType.Oceanic;
         }
 
         //Finally, add the node to the movedNodes array so that there aren't empty spots which will cause errors for other interactions
