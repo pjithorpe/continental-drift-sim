@@ -300,7 +300,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 138b391b025571f41ba4fc9c67c59c67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pooledNodeAmount: 1920000
+  pooledNodeAmount: 3500000
   pooledVolcanoAmount: 30000
 --- !u!4 &297046812
 Transform:
@@ -330,8 +330,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   triWidth: 1
   triHeight: 1
-  meshWidth: 512
-  meshHeight: 512
+  meshWidth: 1024
+  meshHeight: 1024
   randomSeed: 999987
   plateCount: 14
   voronoiRelaxationSteps: 10

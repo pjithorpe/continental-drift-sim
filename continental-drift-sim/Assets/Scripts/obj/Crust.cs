@@ -50,7 +50,7 @@ public class Crust
     Plate p = new Plate(defaultHeight: 0.0f);
 
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 5f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 10f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
     {
         this.width = width;
         this.height = height;
@@ -200,70 +200,46 @@ public class Crust
 
         //Generate fractal landscape
         GenerateFractal(width / 8);
+        //Add Perlin noise
+        AddNoiseToFractal();
 
-        //Precalculating floats which are used in loop
-        float perlinFraction = width / 20; // Have to add a small fraction for Mathf.PerlinNoise to work
-        float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
         //vertices
-        if (addNoise)
+        for (int i = 0; i < verts.Length; i++)
         {
-            for (int i = 0; i < verts.Length; i++)
+            xPos = i % width;
+            zPos = i / width;
+
+            float y = fractal[i] * maxHeight * 0.7f;
+            CrustNode n = ObjectPooler.current.GetPooledNode();
+
+            if (y < maxHeight * 0.15f)
             {
-                xPos = i % width;
-                zPos = i / width;
-
-                //float perlinNoise = Mathf.PerlinNoise(((xPos) / perlinFraction) + offset, ((zPos) / perlinFraction) + offset);
-
-                //float y = 0.7f * maxHeight * perlinNoise;
-
-                float y = fractal[i] * maxHeight * 0.7f;
-
-                if (zPos % 2 == 0)
-                {
-                    verts[i] = new Vector3(xPos * triWidth, y, zPos * triHeight);
-                }
-                else
-                {
-                    verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, y, zPos * triHeight);
-                }
-
-                CrustNode n = ObjectPooler.current.GetPooledNode();
-                n.X = xPos;
-                n.Z = zPos;
-                n.Height = y;
-                n.Density = 0.1f;
-                n.IsVirtual = false;
-                crustNodes[xPos, zPos] = new List<CrustNode>();
-                crustNodes[xPos, zPos].Add(n);
-                movedCrustNodes[xPos, zPos] = new LinkedList<CrustNode>();
-
+                y = maxHeight * 0.125f;
+                n.Type = MaterialType.Oceanic;
             }
-        }
-        else
-        {
-            for (int i = 0; i < verts.Length; i++)
+            else
             {
-                xPos = i % width;
-                zPos = i / width;
-
-                if (zPos % 2 == 0)
-                {
-                    verts[i] = new Vector3(xPos * triWidth, 0, zPos * triHeight);
-                }
-                else
-                {
-                    verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, 0, zPos * triHeight);
-                }
-                CrustNode nd = ObjectPooler.current.GetPooledNode();
-                nd.X = xPos;
-                nd.Z = zPos;
-                nd.Height = 0;
-                nd.Density = 0.1f;
-                nd.IsVirtual = false;
-                crustNodes[xPos, zPos] = new List<CrustNode>();
-                crustNodes[xPos, zPos].Add(nd);
-                movedCrustNodes[xPos, zPos] = new LinkedList<CrustNode>();
+                n.Type = MaterialType.Continental;
             }
+
+            if (zPos % 2 == 0)
+            {
+                verts[i] = new Vector3(xPos * triWidth, y, zPos * triHeight);
+            }
+            else
+            {
+                verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, y, zPos * triHeight);
+            }
+
+            n.X = xPos;
+            n.Z = zPos;
+            n.Height = y;
+            n.Density = 0.1f;
+            n.IsVirtual = false;
+            crustNodes[xPos, zPos] = new List<CrustNode>();
+            crustNodes[xPos, zPos].Add(n);
+            movedCrustNodes[xPos, zPos] = new LinkedList<CrustNode>();
+
         }
 
         mesh.vertices = verts;
@@ -428,11 +404,11 @@ public class Crust
     {
         fractal = new float[width * height];
 
-        for (int z = 0; z < height; z += featureSize)
+        for (int z = featureSize - 1; z < height; z += featureSize)
         {
-            for (int x = 0; x < height; x += featureSize)
+            for (int x = featureSize - 1; x < height; x += featureSize)
             {
-                SetHeightAtPoint(x, z, Random.Range(0.0f, maxHeight));
+                SetHeightAtPoint(x, z, Random.Range(0.35f * maxHeight, 0.65f * maxHeight));
             }
         }
 
@@ -449,8 +425,27 @@ public class Crust
     }
 
     /*
+     * Apply a Perlin Noise function to the heightmap stored in fractal[]
+     */
+    private void AddNoiseToFractal()
+    {
+        //Precalculating floats which are used in loop
+        float perlinFraction = width / 5; // Have to add a small fraction for Mathf.PerlinNoise to work
+        float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
+
+        for (int i = 0; i < fractal.Length; i++)
+        {
+            int xPos = i % width;
+            int zPos = i / width;
+            //inside loop
+            float perlinNoise = Mathf.PerlinNoise((xPos / perlinFraction) + offset, (zPos / perlinFraction) + offset);
+
+            //fractal[i] *= perlinNoise;
+        }
+    }
+
+    /*
     * Generates a random set of thin plates as an initial state
-    * 
     */
     public void InitialiseCrust(int plateCount, int voronoiRelaxationSteps)
     {
@@ -809,25 +804,7 @@ public class Crust
                     }
                     //end debug
 
-                    //debug (for number of nodes at vertex)
-                    if (crustNodes[j, i].Count == 2)
-                    {
-                        colors[vertIndex] = Color.green;
-                    }
-                    else if (crustNodes[j, i].Count == 3)
-                    {
-                        colors[vertIndex] = Color.yellow;
-                    }
-                    else if (crustNodes[j, i].Count == 4)
-                    {
-                        colors[vertIndex] = Color.red;
-                    }
-                    else if (crustNodes[j, i].Count > 4)
-                    {
-                        colors[vertIndex] = Color.black;
-                    }
-
-                    //colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
+                    
                 }
             }
         }
