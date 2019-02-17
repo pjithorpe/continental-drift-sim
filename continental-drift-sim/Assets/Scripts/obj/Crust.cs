@@ -16,7 +16,6 @@ public class Crust
     private int height;
     private float triWidth;
     private float triHeight;
-    private float baseHeight;
     private float maxHeight; //distance above base height, not total max height
     private float seaLevel; // between 0.0 and 1.0 representing positioning between baseHeight and maxHeight
     private Stage stage;
@@ -50,7 +49,7 @@ public class Crust
     Plate p = new Plate(defaultHeight: 0.0f);
 
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float baseHeight = 2.5f, float maxHeight = 10f, float seaLevel = 0.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float maxHeight = 10f, float seaLevel = 4.0f, Stage stage = null, Plate[] plates = null)
     {
         this.width = width;
         this.height = height;
@@ -60,7 +59,6 @@ public class Crust
         else { this.mesh = mesh; }
         this.meshFilter = mf;
         this.meshRenderer = mr;
-        this.baseHeight = baseHeight;
         this.maxHeight = maxHeight;
         this.seaLevel = seaLevel;
         if (stage == null) { this.stage = new CoolingStage(); }
@@ -115,11 +113,6 @@ public class Crust
     {
         get { return this.height; }
         set { this.height = value; }
-    }
-    public float BaseHeight
-    {
-        get { return this.baseHeight; }
-        set { this.baseHeight = value; }
     }
     public float MaxHeight
     {
@@ -209,12 +202,12 @@ public class Crust
             xPos = i % width;
             zPos = i / width;
 
-            float y = fractal[i] * maxHeight * 0.7f;
+            float y = fractal[i] * maxHeight;
             CrustNode n = ObjectPooler.current.GetPooledNode();
 
-            if (y < maxHeight * 0.15f)
+            if (y < seaLevel)
             {
-                y = maxHeight * 0.125f;
+                y = seaLevel - (maxHeight * 0.025f); //add a little ridge
                 n.Type = MaterialType.Oceanic;
             }
             else
@@ -281,7 +274,7 @@ public class Crust
         colors = new Color[verts.Length];
         for (int i = 0; i < colors.Length; i++)
         {
-            float normalisedHeight = (verts[i].y - baseHeight) / maxHeight;
+            float normalisedHeight = verts[i].y / maxHeight;
             colors[i] = stage.PickColour(normalisedHeight, seaLevel);
         }
 
@@ -652,7 +645,7 @@ public class Crust
                     }
 
                     float h = verts[vertIndex].y;
-                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    float normalisedHeight = h / maxHeight;
                     colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
                 }
             }
@@ -790,7 +783,7 @@ public class Crust
                     }
 
                     float h = verts[vertIndex].y;
-                    float normalisedHeight = (h - baseHeight) / maxHeight;
+                    float normalisedHeight = h / maxHeight;
                     //debug (for continental or oceanic)
                     if (crustNodes[j,i][0].Type == MaterialType.Oceanic)
                     {
@@ -898,7 +891,7 @@ public class Crust
         crustNodes[xPos, zPos][0].Plate.AffectPlateVector();
 
         //If the rift has become deep enough, random chance of new volcano
-        if(crustNodes[xPos, zPos][0].Height < baseHeight * 0.25f)
+        if(crustNodes[xPos, zPos][0].Height < seaLevel * 0.5f)
         {
             float chance = Random.Range(0.0f, 1.0f);
             if (chance > 0.95f) // 1 in 20 chance
@@ -1004,7 +997,7 @@ public class Crust
         for (int i = 0; i < listLength; i++)
         {
             //get rid of virtual nodes that are below the surface
-            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < baseHeight))
+            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < 0.0f))
             {
                 var movedCrustNode = ObjectPooler.current.GetPooledNode();
                 movedCrustNode.Copy(currentNode.Value);
