@@ -70,6 +70,7 @@ public class CrustNode : PoolableObject
         this.height = nodeToCopy.Height;
         this.density = nodeToCopy.Density;
         this.isVirtual = nodeToCopy.IsVirtual;
+        this.type = nodeToCopy.Type;
     }
 
     public override void CleanObject()

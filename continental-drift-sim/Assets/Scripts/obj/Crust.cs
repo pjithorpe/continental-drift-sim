@@ -75,9 +75,9 @@ public class Crust
         subductionFactor = maxHeight * 0.05f;
         subductionVolcanoDepthThreshold = maxHeight * 0.15f;
 
-        shieldRockSize = maxHeight / 22f;
+        shieldRockSize = maxHeight / 60f;
         shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
-        stratoRockSize = maxHeight / 6f;
+        stratoRockSize = maxHeight / 20f;
         stratoHeightSimilarityEpsilon = stratoRockSize * 0.2f;
 
         /* Remove this when the temporary code in update mesh is removed --> */
@@ -200,8 +200,8 @@ public class Crust
 
         //Generate fractal landscape
         GenerateFractal(width / 8);
-        //Add Perlin noise
-        AddNoiseToFractal();
+        //Add Perlin noise to seabed
+        //GeneratePerlinNoise();
 
         //vertices
         for (int i = 0; i < verts.Length; i++)
@@ -424,11 +424,10 @@ public class Crust
         }
     }
 
-    /*
-     * Apply a Perlin Noise function to the heightmap stored in fractal[]
-     */
-    private void AddNoiseToFractal()
+    /*private float[,] GeneratePerlinNoise(int sizeX, int sizeZ)
     {
+        float[,] perlinNoise = new float[sizeX, sizeZ];
+
         //Precalculating floats which are used in loop
         float perlinFraction = width / 5; // Have to add a small fraction for Mathf.PerlinNoise to work
         float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
@@ -440,9 +439,8 @@ public class Crust
             //inside loop
             float perlinNoise = Mathf.PerlinNoise((xPos / perlinFraction) + offset, (zPos / perlinFraction) + offset);
 
-            //fractal[i] *= perlinNoise;
         }
-    }
+    }*/
 
     /*
     * Generates a random set of thin plates as an initial state
@@ -827,7 +825,7 @@ public class Crust
         }
 
         //Now run a particle desposition step for each volcano in each of the lists of volcanos
-        EruptVolcanos(shieldVolcanos, maxAge: 4, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 4, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
+        EruptVolcanos(shieldVolcanos, maxAge: 3, maxSearchRange: 4, maxElevationThreshold: 1, dropZoneRadius: 4, rockSize: shieldRockSize, heightSimilarityEpsilon: shieldHeightSimilarityEpsilon);
         EruptVolcanos(stratoVolcanos, 2, 2, 2, 3, stratoRockSize, stratoHeightSimilarityEpsilon);
 
         mesh.vertices = verts;
