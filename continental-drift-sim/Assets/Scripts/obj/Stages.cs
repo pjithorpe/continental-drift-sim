@@ -50,7 +50,7 @@ using ColorExtended;
             }
             if ((0.45f < normalisedHeight) && (normalisedHeight < 0.55f))
             {
-                return ColorEx.sandBrown;
+                return ColorEx.sandBrownLight;
             }
             else
             {

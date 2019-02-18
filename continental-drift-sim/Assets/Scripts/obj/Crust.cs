@@ -388,6 +388,8 @@ public class Crust
                 DiamondStep(x, z + halfStep, stepSize, Random.Range(-1.0f, 1.0f) * scale);
             }
         }
+
+
     }
 
     /*
@@ -414,6 +416,15 @@ public class Crust
 
             sampleSize = sampleSize / 2;
             randomScale = randomScale / 2.0f;
+        }
+
+        //Now go around the edges and apply a fucntion that will cause them to be always be ocean  so that we don't get odd straight sided continents
+        for (int x = 0; x < height; x += featureSize)
+        {
+            for (int z = 0; z < height; z += featureSize)
+            {
+
+            }
         }
     }
 
@@ -783,19 +794,51 @@ public class Crust
                     }
 
                     float h = verts[vertIndex].y;
-                    float normalisedHeight = h / maxHeight;
-                    //debug (for continental or oceanic)
-                    if (crustNodes[j,i][0].Type == MaterialType.Oceanic)
+
+
+                    //colour mesh
+                    float normalisedHeight;
+
+                    if (crustNodes[j, i][0].Type == MaterialType.Oceanic)
                     {
-                        colors[vertIndex] = ColorExtended.ColorEx.oceanBlue;
+                        normalisedHeight = h / seaLevel;
+                        if (normalisedHeight > 1f)
+                        {
+                            colors[vertIndex] = ColorExtended.ColorEx.sandBrownLight;
+                        }
+                        else
+                        {
+                            colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.oceanDeepBlue, ColorExtended.ColorEx.oceanLightBlue, normalisedHeight); 
+                        }
+
                     }
                     else
                     {
-                        colors[vertIndex] = ColorExtended.ColorEx.sandBrown;
+                        if (h < seaLevel)
+                        {
+                            normalisedHeight = h / seaLevel;
+                            colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.oceanDeepBlue, ColorExtended.ColorEx.oceanShallowsBlue, normalisedHeight);
+                        }
+                        else
+                        {
+                            h -= seaLevel;
+                            if (h < maxHeight * 0.05f) //coast
+                            {
+                                normalisedHeight = h / maxHeight * 0.05f;
+                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.sandBrownLight, ColorExtended.ColorEx.sandBrownDark, normalisedHeight);
+                            }
+                            else if (h < maxHeight * 0.5f) //land
+                            {
+                                normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 0.45f, h - maxHeight * 0.05f);
+                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.forestGreenLight, ColorExtended.ColorEx.forestGreenDark, normalisedHeight);
+                            }
+                            else //mountains
+                            {
+                                normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 1f, h - maxHeight * 0.5f);
+                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.mountainGrey, Color.white, normalisedHeight);
+                            }
+                        }
                     }
-                    //end debug
-
-                    
                 }
             }
         }
