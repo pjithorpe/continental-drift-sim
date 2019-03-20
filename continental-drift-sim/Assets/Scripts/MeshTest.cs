@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class MeshTest : MonoBehaviour {
+public class MeshTest : MonoBehaviour
+{
 
-    [SerializeField] public float triWidth = 1f;
-    [SerializeField] public float triHeight = 1f;
+    [SerializeField] public float triSize = 1f;
 
-    [SerializeField] int meshWidth = 256;
-    [SerializeField] public int meshHeight = 256;
+    [SerializeField] int meshWidth = 512;
+    [SerializeField] public int meshHeight = 512;
 
     [SerializeField] public int randomSeed = 1;
 
@@ -36,11 +36,25 @@ public class MeshTest : MonoBehaviour {
 
     void Start()
     {
+        // Now set the camera dimensions
+        Camera mainCam = Camera.main;
+        mainCam.enabled = true;
+        mainCam.aspect = 1;
+        mainCam.transform.position = new Vector3(meshWidth * 0.5f, 50.0f, meshHeight * 0.5f);
+        //This enables the orthographic mode
+        mainCam.orthographic = true;
+        //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
+        mainCam.orthographicSize = meshWidth * 0.5f;
+        //Set the orthographic Camera Viewport size and position
+        mainCam.rect = new Rect(0.0f, 0.0f, meshWidth, meshHeight);
+
         StartCoroutine(InitialisationCoroutine());
     }
 
     IEnumerator InitialisationCoroutine()
     {
+        moveSpeed = 0.15f;
+
         Random.InitState(randomSeed);
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
@@ -48,28 +62,27 @@ public class MeshTest : MonoBehaviour {
         sliderProgress += 0.2f;
         yield return null;
 
-        testCrust = new Crust(mf, mr, meshWidth, meshHeight, triWidth, triHeight, seaLevel: 1.0f);
+        testCrust = new Crust(meshWidth, meshHeight, triSize, seaLevel: 1.0f);
 
         sliderProgress += 0.2f;
         yield return null;
 
-        moveSpeed = 0.15f;
-        coolingTime = 4;
-        testCrust.Stage = new WaterStage();
+        testCrust.Mesh = MeshBuilder.BuildMesh(mf, mr, meshWidth, meshHeight, triSize, addNoise: true);
 
-        testCrust.BuildMesh(addNoise: true);
+        testCrust = TerrainGeneration.ApplyFractalToCrust(testCrust);
+        Debug.Log("in apply: " + testCrust.CrustNodes[30, 222][0].Height);
 
         sliderProgress += 0.2f;
         yield return null;
 
-        testCrust.InitialiseCrust(plateCount, voronoiRelaxationSteps);
+        testCrust = PlateGeneration.SplitCrustIntoPlates(testCrust, meshWidth, meshHeight, plateCount, voronoiRelaxationSteps);
 
         sliderProgress += 0.2f;
         yield return null;
 
         for (int i = 0; i < testCrust.Plates.Length; i++)
         {
-			while ((testCrust.Plates[i].XSpeed < 0.3f && testCrust.Plates[i].XSpeed > -0.3f) && (testCrust.Plates[i].ZSpeed < 0.3f && testCrust.Plates[i].ZSpeed > -0.3f))
+            while ((testCrust.Plates[i].XSpeed < 0.3f && testCrust.Plates[i].XSpeed > -0.3f) && (testCrust.Plates[i].ZSpeed < 0.3f && testCrust.Plates[i].ZSpeed > -0.3f))
             {
                 testCrust.Plates[i].AccurateXSpeed = Random.Range(-2f, 2f);
                 testCrust.Plates[i].AccurateZSpeed = Random.Range(-2f, 2f);
@@ -87,69 +100,15 @@ public class MeshTest : MonoBehaviour {
         float progress = Mathf.Clamp01(sliderProgress);
         sliderBar.value = progress;
         loadingText.text = Mathf.FloorToInt(progress * 100f) + "%";
-
-
-        t = Time.deltaTime/coolingTime;
-
-        if (Input.GetKeyDown("x"))
-        {
-            cooling = true;
-        }
-
-        if (cooling)
-        {
-            testCrust.SeaLevel -= t;
-            Debug.Log("Sea level is now: " + (testCrust.SeaLevel * 100).ToString() + "%");
-            testCrust.UpdateMesh();
-
-            if(testCrust.SeaLevel <= -0.1f)
-            {
-                cooling = false;
-            }
-        }
-
-        if (Input.GetKeyDown("z"))
-        {
-            testCrust.SeaLevel += 0.05f;
-            Debug.Log("Sea level is now: " + (testCrust.SeaLevel * 100).ToString() + "%");
-            testCrust.UpdateMesh();
-        }
-
-        if (Input.GetKeyDown("space"))
-        {
-            if (testCrust.Stage is CoolingStage)
-            {
-                testCrust.Stage = new WaterStage();
-            }
-            else if (testCrust.Stage is WaterStage)
-            {
-                testCrust.Stage = new LifeStage();
-            }
-            else if (testCrust.Stage is LifeStage)
-            {
-                testCrust.Stage = new CoolingStage();
-            }
-
-            testCrust.UpdateMesh();
-        }
-
-        if (Input.GetKeyDown("b"))
-        {
-            testCrust.UpdateMesh();
-        }
-
-        if (Input.GetKeyDown("v"))
-        {
-            InvokeRepeating("UpdateTestMesh", 0.0f, moveSpeed);
-        }
     }
 
     void UpdateTestMesh()
     {
-        testCrust.UpdateMesh();
+        Mesh mesh = testCrust.UpdateMesh();
+        mf.mesh = mesh;
     }
 
-    public void PauseOrPlay(bool pause)
+    public void PauseOrPlay(bool pause, string seaLevelTxt = null, string volFreqTxt = null)
     {
         if (pause)
         {
@@ -157,43 +116,29 @@ public class MeshTest : MonoBehaviour {
         }
         else
         {
+            if (seaLevelTxt != null)
+            {
+                float temp;
+                float.TryParse(seaLevelTxt, out temp);
+                testCrust.SeaLevel = temp;
+            }
+            if (volFreqTxt != null)
+            {
+                float temp;
+                float.TryParse(volFreqTxt, out temp);
+                testCrust.VolcanoFrequency = temp;
+            }
             InvokeRepeating("UpdateTestMesh", 0.0f, moveSpeed);
         }
     }
 
-    private void OnDrawGizmos()
+    public void ReEnergisePlates()
     {
-        
-        Gizmos.color = Color.red;
-        /*
-        Gizmos.DrawSphere(new Vector3(231, 150, 0), 0.5f);
-        */
-        /*
-        if (m_points != null)
-        {
-            for (int i = 0; i < m_points.Count; i++)
-            {
-                Gizmos.DrawSphere(m_points[i], 0.2f);
-            }
-        }
-        
-        if (m_edges != null)
-        {
-            Gizmos.color = Color.white;
-            for (int i = 0; i < m_edges.Count; i++)
-            {
-                for (int j = 1; j < m_edges[i].Count; j++)
-                {
-                    Vector3 left = new Vector3(m_edges[i][j - 1].x, 100.0f, m_edges[i][j - 1].y);
-                    Vector3 right = new Vector3(m_edges[i][j].x, 100.0f, m_edges[i][j].y);
-                    Gizmos.DrawLine(left, right);
-                }
-                Vector3 l = new Vector3(m_edges[i][m_edges[i].Count - 1].x, 100.0f, m_edges[i][m_edges[i].Count - 1].y);
-                Vector3 r = new Vector3(m_edges[i][0].x, 100.0f, m_edges[i][0].y);
-                Gizmos.DrawLine((Vector3)l, (Vector3)r);
-            }
-        }
-        */
+        testCrust.ReEnergisePlates();
     }
 
+    public void RandomisePlateMovements()
+    {
+        testCrust.RandomisePlateMovements();
+    }
 }

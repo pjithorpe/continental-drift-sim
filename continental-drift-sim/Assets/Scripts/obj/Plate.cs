@@ -170,7 +170,7 @@ public class Plate
 		{
 			checkMoveX = false;
 		}
-		if (xMoveCounter >= absoluteInverseXSpeed)
+		if (zMoveCounter >= absoluteInverseZSpeed)
 		{
 			checkMoveZ = true;
 			zMoveCounter = 0;
@@ -226,10 +226,10 @@ public class Plate
             p.AccurateZSpeed -= scaledAffectorZMomentum;
         }
 
-        // speed boost = current speed * (no. of boosting nodes / total nodes in plate) * boost constant
+        // speed boost = 
         if(energyBoostCount != 0)
         {
-            float boostFactor = 8f * ((float)energyBoostCount / (float)nodeCount);
+            float boostFactor = (float)energyBoostCount / (float)nodeCount;
             float xBoostAmount = AccurateXSpeed * boostFactor;
             float zBoostAmount = AccurateZSpeed * boostFactor;
 

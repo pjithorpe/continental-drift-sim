@@ -16,4 +16,54 @@ namespace ColorExtended {
         public static readonly Color forestGreenLight = new Color32(70, 163, 70, 255);
         public static readonly Color forestGreenDark = new Color32(10, 56, 10, 255);
     }
+
+    public static class ColorTerrain
+    {
+        public static Color CalculateColor(CrustNode n, float seaLevel, float maxHeight)
+        {
+            float h = n.Height;
+            float normalisedHeight;
+
+            if (n.Type == MaterialType.Oceanic)
+            {
+                normalisedHeight = h / seaLevel;
+                if (normalisedHeight > 1f)
+                {
+                    return ColorEx.sandBrownLight;
+                }
+                else
+                {
+                    return Color.Lerp(ColorEx.oceanDeepBlue, ColorEx.oceanLightBlue, normalisedHeight);
+                }
+
+            }
+            else
+            {
+                if (h < seaLevel)
+                {
+                    normalisedHeight = h / seaLevel;
+                    return Color.Lerp(ColorEx.oceanDeepBlue, ColorEx.oceanShallowsBlue, normalisedHeight);
+                }
+                else
+                {
+                    h -= seaLevel;
+                    if (h < maxHeight * 0.05f) //coast
+                    {
+                        normalisedHeight = h / maxHeight * 0.05f;
+                        return Color.Lerp(ColorEx.sandBrownLight, ColorEx.sandBrownDark, normalisedHeight);
+                    }
+                    else if (h < maxHeight * 0.5f) //land
+                    {
+                        normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 0.45f, h - maxHeight * 0.05f);
+                        return Color.Lerp(ColorEx.forestGreenLight, ColorEx.forestGreenDark, normalisedHeight);
+                    }
+                    else //mountains
+                    {
+                        normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 1f, h - maxHeight * 0.5f);
+                        return Color.Lerp(ColorEx.mountainGrey, Color.white, normalisedHeight);
+                    }
+                }
+            }
+        }
+    }
 }

@@ -10,15 +10,12 @@ public class Crust
 {
     // field private vars
     private Mesh mesh;
-    private MeshFilter meshFilter;
-    private MeshRenderer meshRenderer;
     private int width;
     private int height;
-    private float triWidth;
-    private float triHeight;
+    private float triSize;
     private float maxHeight; //distance above base height, not total max height
     private float seaLevel; // between 0.0 and 1.0 representing positioning between baseHeight and maxHeight
-    private Stage stage;
+    private float volcanoFrequency;
     private Plate[] plates;
     private List<CrustNode>[,] crustNodes; // array of nodes for the whole mesh, arranged in a matrix according to their positions
     private List<Volcano> stratoVolcanos;
@@ -26,7 +23,7 @@ public class Crust
 
 
     // non-field definitions
-    private float halfTriWidth;
+    private float halfTriSize;
     private float spatialWidth; // (triWidth * width)
     private float spatialHeight; // (triHeight * height)
     private int vertexCount;
@@ -34,10 +31,13 @@ public class Crust
     private Vector3[] verts;
     private int[] tris;
     private Color[] colors;
-    private float[] fractal;
     private LinkedList<CrustNode>[,] movedCrustNodes;
     private float subductionFactor;
     private float subductionVolcanoDepthThreshold; // how deep below the surface a subducting plate needs to be before it can produce surface volcanos
+    private bool reEnergise = false;
+    private bool randomiseMovement = false;
+    private float seaLevelNext;
+    private float volcanoFrequencyNext = 1f;
 
     //volcanos
     float shieldRockSize;
@@ -45,41 +45,35 @@ public class Crust
     float shieldHeightSimilarityEpsilon; //in the particle deposition algoorithm, if heights are this distance away from eachother, they will be considered equal
     float stratoHeightSimilarityEpsilon;
 
-    /* Remove this when the temporary code in update mesh is removed --> */
-    Plate p = new Plate(defaultHeight: 0.0f);
-
     // Constructor
-    public Crust(MeshFilter mf, MeshRenderer mr, int width = 256, int height = 256, float triWidth = 1.0f, float triHeight = 1.0f, Mesh mesh = null, float maxHeight = 10f, float seaLevel = 4.0f, Stage stage = null, Plate[] plates = null)
+    public Crust(int width = 512, int height = 512, float triSize = 1f, float maxHeight = 10f, float seaLevel = 4.0f)
     {
         this.width = width;
         this.height = height;
-        this.triWidth = triWidth;
-        this.triHeight = triHeight;
-        if (mesh == null) { this.mesh = new Mesh(); }
-        else { this.mesh = mesh; }
-        this.meshFilter = mf;
-        this.meshRenderer = mr;
+        this.triSize = triSize;
         this.maxHeight = maxHeight;
         this.seaLevel = seaLevel;
-        if (stage == null) { this.stage = new CoolingStage(); }
-        if (plates == null) { this.plates = new Plate[0]; }
-        else { this.plates = plates; }
-        this.shieldVolcanos = new List<Volcano>();
-        this.stratoVolcanos = new List<Volcano>();
 
-        halfTriWidth = triWidth / 2;
-        spatialWidth = width * triWidth;
-        spatialHeight = height * triHeight;
+        mesh = new Mesh();
+        colors = new Color[width * height];
+        plates = new Plate[0];
+        shieldVolcanos = new List<Volcano>();
+        stratoVolcanos = new List<Volcano>();
+        crustNodes = MeshBuilder.BuildCrustNodesArray(width, height);
+        movedCrustNodes = MeshBuilder.BuildMovedCrustNodesArray(width, height);
+
+        halfTriSize = triSize / 2;
+        spatialWidth = width * triSize;
+        spatialHeight = height * triSize;
         subductionFactor = maxHeight * 0.05f;
         subductionVolcanoDepthThreshold = maxHeight * 0.15f;
-
         shieldRockSize = maxHeight / 60f;
         shieldHeightSimilarityEpsilon = shieldRockSize * 0.2f;
         stratoRockSize = maxHeight / 20f;
         stratoHeightSimilarityEpsilon = stratoRockSize * 0.2f;
 
-        /* Remove this when the temporary code in update mesh is removed --> */
-        this.AddPlate(p);
+        seaLevelNext = Mathf.InverseLerp(0.0f, maxHeight, seaLevel);
+        volcanoFrequency = 1f;
     }
 
     public Mesh Mesh
@@ -93,16 +87,6 @@ public class Crust
                 verts = this.mesh.vertices;
             }
         }
-    }
-    public MeshFilter MeshFilter
-    {
-        get { return this.meshFilter; }
-        set { this.meshFilter = value; }
-    }
-    public MeshRenderer MeshRenderer
-    {
-        get { return this.meshRenderer; }
-        set { this.meshRenderer = value; }
     }
     public int Width
     {
@@ -122,12 +106,17 @@ public class Crust
     public float SeaLevel
     {
         get { return this.seaLevel; }
-        set { this.seaLevel = value; }
+        set { this.seaLevelNext = value; }
     }
-    public Stage Stage
+    public float VolcanoFrequency
     {
-        get { return this.stage; }
-        set { this.stage = value; }
+        get { return this.volcanoFrequency; }
+        set { this.volcanoFrequencyNext = value; }
+    }
+    public List<CrustNode>[,] CrustNodes
+    {
+        get { return this.crustNodes; }
+        set { this.crustNodes = value; }
     }
     public Plate[] Plates
     {
@@ -176,575 +165,51 @@ public class Crust
         stratoVolcanos.Add(v);
     }
 
-    public void BuildMesh(bool addNoise)
+    public void RandomisePlateMovements()
     {
-        mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        vertexCount = width * height;
-        triCount = (width - 1) * (height - 1) * 6;
-        verts = new Vector3[vertexCount];
-        crustNodes = new List<CrustNode>[width, height];
-        movedCrustNodes = new LinkedList<CrustNode>[width, height];
-        tris = new int[triCount];
-
-        //x and y (in number of triWidths/Lengths)
-        int xPos;
-        int zPos;
-
-        //Generate fractal landscape
-        GenerateFractal(width / 8);
-        //Add Perlin noise to seabed
-        //GeneratePerlinNoise();
-
-        //vertices
-        for (int i = 0; i < verts.Length; i++)
-        {
-            xPos = i % width;
-            zPos = i / width;
-
-            float y = fractal[i] * maxHeight;
-            CrustNode n = ObjectPooler.current.GetPooledNode();
-
-            if (y < seaLevel)
-            {
-                y = seaLevel - (maxHeight * 0.025f); //add a little ridge
-                n.Type = MaterialType.Oceanic;
-            }
-            else
-            {
-                n.Type = MaterialType.Continental;
-            }
-
-            if (zPos % 2 == 0)
-            {
-                verts[i] = new Vector3(xPos * triWidth, y, zPos * triHeight);
-            }
-            else
-            {
-                verts[i] = new Vector3((xPos * triWidth) + halfTriWidth, y, zPos * triHeight);
-            }
-
-            n.X = xPos;
-            n.Z = zPos;
-            n.Height = y;
-            n.Density = 0.1f;
-            n.IsVirtual = false;
-            crustNodes[xPos, zPos] = new List<CrustNode>();
-            crustNodes[xPos, zPos].Add(n);
-            movedCrustNodes[xPos, zPos] = new LinkedList<CrustNode>();
-
-        }
-
-        mesh.vertices = verts;
-
-
-        //triangles
-        //vi = vertex index
-        //ti = triangle index
-        for (int ti = 0, vi = 0, y = 0; y < height - 1; y++, vi++)
-        {
-            for (int x = 0; x < width - 1; x++, ti += 6, vi++)
-            {
-                if ((vi / width) % 2 == 0)
-                {
-                    tris[ti] = vi;
-                    tris[ti + 3] = tris[ti + 2] = vi + 1;
-                    tris[ti + 4] = tris[ti + 1] = vi + width;
-                    tris[ti + 5] = vi + width + 1;
-                }
-                else
-                {
-                    tris[ti] = tris[ti + 3] = vi;
-                    tris[ti + 1] = vi + width;
-                    tris[ti + 2] = tris[ti + 4] = vi + width + 1;
-                    tris[ti + 5] = vi + 1;
-                }
-            }
-        }
-        mesh.triangles = tris;
-
-
-        //colors
-        var oceanBlue = new Color32(28, 107, 160, 255);
-        var bedrockGrey = new Color32(79, 70, 60, 255);
-        var mountainGrey = new Color32(140, 127, 112, 255);
-        var sandBrown = new Color32(100, 105, 64, 255);
-
-        //currently just assumes magma stage
-        colors = new Color[verts.Length];
-        for (int i = 0; i < colors.Length; i++)
-        {
-            float normalisedHeight = verts[i].y / maxHeight;
-            colors[i] = stage.PickColour(normalisedHeight, seaLevel);
-        }
-
-        mesh.colors = colors;
-
-        mesh.RecalculateNormals();
-
-
-        meshFilter.mesh = mesh;
-
-        meshRenderer.material = Resources.Load("Materials/TestMaterial", typeof(Material)) as Material;
-
-
-        // Now set the camera dimensions
-        Camera mainCam = Camera.main;
-        mainCam.enabled = true;
-        mainCam.aspect = 1;
-        mainCam.transform.position = new Vector3(spatialWidth * 0.5f, 50.0f, spatialHeight * 0.5f);
-        //This enables the orthographic mode
-        mainCam.orthographic = true;
-        //Set the size of the viewing volume you'd like the orthographic Camera to pick up (5)
-        mainCam.orthographicSize = spatialWidth * 0.5f;
-        //Set the orthographic Camera Viewport size and position
-        mainCam.rect = new Rect(0.0f, 0.0f, spatialWidth, spatialHeight);
-
-
-        /*Vector3[] normals = new Vector3[tris.Length];
-
-        for (int i = 0; i < normals.Length; i++)
-        {
-            normals[i] = Vector3.up;
-        }
-
-        mesh.normals = normals;
-
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        */
-        /*Vector2[] uv = new Vector2[vertexCount];
-
-        uv[0] = new Vector2(0, 0);
-        uv[1] = new Vector2(1, 0);
-        uv[2] = new Vector2(0, 1);
-        uv[3] = new Vector2(1, 1);
-
-        mesh.uv = uv;*/
+        randomiseMovement = true;
     }
-
-    private float GetHeightAtPoint(int x, int z)
+    public void ReEnergisePlates()
     {
-        if (x < 0) { x = width + x; }
-        if (z < 0) { z = height + z; }
-
-        return fractal[(x % (width - 1)) + (z % (height - 1)) * width];
-    }
-
-    private void SetHeightAtPoint(int x, int z, float value)
-    {
-        if (x < 0) { x = width + x; }
-        if (z < 0) { z = height + z; }
-
-        fractal[(x % (width - 1)) + (z % (height - 1)) * width] = value;
-    }
-
-    private void SquareStep(int x, int z, int size, float value)
-    {
-        int halfSize = size / 2;
-
-        float a = GetHeightAtPoint(x - halfSize, z - halfSize);
-        float b = GetHeightAtPoint(x + halfSize, z - halfSize);
-        float c = GetHeightAtPoint(x - halfSize, z + halfSize);
-        float d = GetHeightAtPoint(x + halfSize, z + halfSize);
-
-        float meanHeight = (a + b + c + d) / 4.0f;
-        float adjustedHeight = meanHeight + value;
-
-        SetHeightAtPoint(x, z, adjustedHeight);
-    }
-
-    private void DiamondStep(int x, int z, int size, float value)
-    {
-        int halfSize = size / 2;
-
-        float a = GetHeightAtPoint(x - halfSize, z);
-        float b = GetHeightAtPoint(x + halfSize, z);
-        float c = GetHeightAtPoint(x, z - halfSize);
-        float d = GetHeightAtPoint(x, z + halfSize);
-
-        float meanHeight = (a + b + c + d) / 4.0f;
-        float adjustedHeight = meanHeight + value;
-
-        SetHeightAtPoint(x, z, adjustedHeight);
-    }
-
-    private void DiamondSquare(int stepSize, float scale)
-    {
-        int halfStep = stepSize / 2;
-        for (int z = halfStep; z < height + halfStep; z += stepSize)
-        {
-            for (int x = halfStep; x < width + halfStep; x += stepSize)
-            {
-                SquareStep(x, z, stepSize, Random.Range(-1.0f, 1.0f) * scale);
-            }
-        }
-
-        for (int z = 0; z < height; z += stepSize)
-        {
-            for (int x = 0; x < width; x += stepSize)
-            {
-                DiamondStep(x + halfStep, z, stepSize, Random.Range(-1.0f, 1.0f) * scale);
-                DiamondStep(x, z + halfStep, stepSize, Random.Range(-1.0f, 1.0f) * scale);
-            }
-        }
-
-
-    }
-
-    /*
-     * Generate a fractal map using diamond square algorithm and store in fractal[]
-     */
-    private void GenerateFractal(int featureSize)
-    {
-        fractal = new float[width * height];
-
-        for (int z = featureSize - 1; z < height; z += featureSize)
-        {
-            for (int x = featureSize - 1; x < height; x += featureSize)
-            {
-                SetHeightAtPoint(x, z, Random.Range(0.35f * maxHeight, 0.65f * maxHeight));
-            }
-        }
-
-        int sampleSize = featureSize;
-        float randomScale = 1.0f;
-
-        while (sampleSize > 1)
-        {
-            DiamondSquare(sampleSize, randomScale);
-
-            sampleSize = sampleSize / 2;
-            randomScale = randomScale / 2.0f;
-        }
-
-        //Now go around the edges and apply a fucntion that will cause them to be always be ocean  so that we don't get odd straight sided continents
-        for (int x = 0; x < height; x += featureSize)
-        {
-            for (int z = 0; z < height; z += featureSize)
-            {
-
-            }
-        }
-    }
-
-    /*private float[,] GeneratePerlinNoise(int sizeX, int sizeZ)
-    {
-        float[,] perlinNoise = new float[sizeX, sizeZ];
-
-        //Precalculating floats which are used in loop
-        float perlinFraction = width / 5; // Have to add a small fraction for Mathf.PerlinNoise to work
-        float offset = Random.Range(10, 100) + Random.Range(0.1f, 0.99f);
-
-        for (int i = 0; i < fractal.Length; i++)
-        {
-            int xPos = i % width;
-            int zPos = i / width;
-            //inside loop
-            float perlinNoise = Mathf.PerlinNoise((xPos / perlinFraction) + offset, (zPos / perlinFraction) + offset);
-
-        }
-    }*/
-
-    /*
-    * Generates a random set of thin plates as an initial state
-    */
-    public void InitialiseCrust(int plateCount, int voronoiRelaxationSteps)
-    {
-        var plates = new Plate[plateCount];
-        var centroids = new List<Vector2>();
-
-        // First, choose points on the mesh at random as our plate centres (centroids)
-        for (int i = 0; i < plateCount; i++)
-        {
-            plates[i] = new Plate();
-            plates[i].DefaultHeight = Random.Range(1.0f, 5.0f);
-            plates[i].Density = Random.Range(0.4f, 1.0f);
-            this.AddPlate(plates[i]);
-
-            //Add a random centroid to list TODO: Convert to make central centroids more likely (maybe a Gaussian?)
-            Vector2 centroid = new Vector2(Random.Range(0, spatialWidth), Random.Range(0, spatialHeight));
-            centroids.Add(centroid);
-        }
-
-        //Now generate the voronoi (multiple times if we perform relaxations)
-        List<List<Vector2>> cylindricalVorRegions = GenerateCylindricalVoronoi(centroids);
-        
-        //TODO: relaxation currently bugged (number of centroids goes down every time relaxation is run)
-        if (voronoiRelaxationSteps > 0)
-        {
-            for (int i = 0; i < voronoiRelaxationSteps; i++)
-            {
-                //relaxation
-                var relaxedCentroids = new List<Vector2>();
-                for (int r = 0; r < cylindricalVorRegions.Count; r++)
-                {
-                    float totalX = 0f;
-                    float totalY = 0f;
-                    for (int p = 0; p < cylindricalVorRegions[r].Count; p++)
-                    {
-                        totalX += cylindricalVorRegions[r][p].x;
-                        totalY += cylindricalVorRegions[r][p].y;
-                    }
-
-                    float averageX = totalX / cylindricalVorRegions[r].Count;
-                    float averageY = totalY / cylindricalVorRegions[r].Count;
-
-                    relaxedCentroids.Add(new Vector2(averageX, averageY));
-                }
-
-                //re-generate
-                cylindricalVorRegions = GenerateCylindricalVoronoi(relaxedCentroids);
-            }
-        }
-        
-
-        Debug.Log("Number of plates: " + plateCount.ToString() + ", Number of regions: " + cylindricalVorRegions.Count.ToString());
-
-        //Now that we have the regions, we can use a filling algorithm to assign all the vertices in each polygon to a plate
-        for (int i = 0; i < cylindricalVorRegions.Count; i++)
-        {
-            //get the min/max values for the region
-            float minX, maxX, minZ, maxZ;
-            minX = maxX = cylindricalVorRegions[i][0].x;
-            minZ = maxZ = cylindricalVorRegions[i][0].y;
-
-            int j = 0;
-            for (j = 1; j < cylindricalVorRegions[i].Count; j++)
-            {
-                if (cylindricalVorRegions[i][j].x < minX)
-                {
-                    minX = cylindricalVorRegions[i][j].x;
-                }
-                else if (cylindricalVorRegions[i][j].x > maxX)
-                {
-                    maxX = cylindricalVorRegions[i][j].x;
-                }
-
-                if (cylindricalVorRegions[i][j].y < minZ)
-                {
-                    minZ = cylindricalVorRegions[i][j].y;
-                }
-                else if (cylindricalVorRegions[i][j].y > maxZ)
-                {
-                    maxZ = cylindricalVorRegions[i][j].y;
-                }
-            }
-
-
-            //Now fill it in
-            int x1 = (int)Math.Round(minX, 0);
-            int x2 = (int)Math.Round(maxX, 0);
-            int z1 = (int)Math.Round(minZ, 0);
-            int z2 = (int)Math.Round(maxZ, 0);
-
-            //Debug.Log(x1.ToString() + " " + x2.ToString() + " " + z1.ToString() + " " + z2.ToString() + " ");
-
-            int fillPlotCount = 0;
-            int polyCorners = cylindricalVorRegions[i].Count;
-            int[] markers = new int[z2 - z1];
-            int n;
-
-            for (int z = z1; z <= z2; z++)
-            {
-                int markerCount = 0;
-                n = polyCorners - 1;
-
-                j = 0;
-                for (j = 0; j < polyCorners; j++)
-                {
-                    if (cylindricalVorRegions[i][j].y < z && cylindricalVorRegions[i][n].y >= z || cylindricalVorRegions[i][n].y < z && cylindricalVorRegions[i][j].y >= z)
-                    {
-                        markers[markerCount++] = (int)(cylindricalVorRegions[i][j].x + (z - cylindricalVorRegions[i][j].y) / (cylindricalVorRegions[i][n].y - cylindricalVorRegions[i][j].y) * (cylindricalVorRegions[i][n].x - cylindricalVorRegions[i][j].x));
-                    }
-                    n = j;
-                }
-
-                j = 0;
-                while (j < markerCount - 1)
-                {
-                    if (markers[j] > markers[j + 1])
-                    {
-                        int swap = markers[j];
-                        markers[j] = markers[j + 1];
-                        markers[j + 1] = swap;
-
-                        if (j != 0) { j--; }
-                    }
-                    else
-                    {
-                        j++;
-                    }
-                }
-
-                for (j = 0; j < markerCount; j += 2)
-                {
-                    if (markers[j] >= x2) break;
-                    if (markers[j + 1] > x1)
-                    {
-                        if (markers[j] < x1) markers[j] = x1;
-                        if (markers[j + 1] > x2) markers[j + 1] = x2;
-                        for (int x = markers[j]; x < markers[j + 1]; x++)
-                        {
-                            //have to make sure the x value is wrapped around if needed because of the cylindricalisation
-                            int wrappedX = x % width;
-                            crustNodes[wrappedX, z - 1][0].Plate = plates[i];
-                            fillPlotCount++;
-                        }
-                    }
-                }
-            }
-        }
-        //Do a final run over all nodes to make sure each one is assigned to a plate
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                if (crustNodes[j, i][0].Plate == null)
-                {
-                    if (crustNodes[(j + 1) % width, i][0].Plate != null) { crustNodes[j, i][0].Plate = crustNodes[(j + 1) % width, i][0].Plate; }
-                    else if (crustNodes[j, (i + 1) % height][0].Plate != null) { crustNodes[j, i][0].Plate = crustNodes[j, (i + 1) % height][0].Plate; }
-                    else if (crustNodes[Math.Abs(j - 1), i][0].Plate != null) { crustNodes[j, i][0].Plate = crustNodes[Math.Abs(j - 1), i][0].Plate; }
-                    else if (crustNodes[j, Math.Abs(i - 1)][0].Plate != null) { crustNodes[j, i][0].Plate = crustNodes[j, Math.Abs(i - 1)][0].Plate; }
-                }
-            }
-        }
-
-        //
-        for (int i = 0; i < plateCount; i++)
-        {
-            plates[i].RecalculateMass();
-            // Debug.Log("nodes: " + plates[i].NodeCount.ToString() + "density: " + plates[i].Density.ToString() + "mass: " + plates[i].Mass.ToString());
-        }
-
-
-        var newNodes = new List<CrustNode>[width, height];
-
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-            {
-                for (int n_i = 0; n_i<crustNodes[j,i].Count; n_i++)
-                {
-                    //Get new x and y for prev node
-                    CrustNode prevN = crustNodes[j, i][0];
-                    int newX = prevN.X;
-                    int newZ = prevN.Z;
-
-                    CrustNode nd = ObjectPooler.current.GetPooledNode();
-                    nd.Copy(prevN);
-                    nd.X = newX;
-                    nd.Z = newZ;
-                    newNodes[newX, newZ] = new List<CrustNode>();
-                    newNodes[newX, newZ].Add(nd);
-
-                    ObjectPooler.current.ReturnNodeToPool(prevN);
-
-
-                    int vertIndex = newX + (newZ * width);
-                    if (newZ % 2 == 0)
-                    {
-                        verts[vertIndex].x = newX * triWidth;
-                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
-                        verts[vertIndex].z = newZ * triHeight;
-                    }
-                    else
-                    {
-                        verts[vertIndex].x = (newX * triWidth) + halfTriWidth;
-                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
-                        verts[vertIndex].z = newZ * triHeight;
-                    }
-
-                    float h = verts[vertIndex].y;
-                    float normalisedHeight = h / maxHeight;
-                    colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
-                }
-            }
-        }
-
-        crustNodes = newNodes;
-
-        mesh.vertices = verts;
-        mesh.colors = colors;
-        meshFilter.mesh = mesh;
-    }
-
-    private List<List<Vector2>> GenerateCylindricalVoronoi(List<Vector2> centroids)
-    {
-        var nullColors = new List<uint>(); //needed to call Voronoi(), but redundant in this use case
-
-        int noOfCentroids = centroids.Count;
-        for (int i = 0; i < noOfCentroids; i++)
-        {
-            //We copy all of the centroids to create 2 "ghost" versions of the voronoi which we we stitch onto either side of the real one. This will help us to cylindricalise the map.
-            Vector2 ghostCentroidRight = new Vector2(centroids[i].x + spatialWidth, centroids[i].y);
-            Vector2 ghostCentroidRightRight = new Vector2(centroids[i].x + (2f * spatialWidth), centroids[i].y);
-            centroids.Add(ghostCentroidRight);
-            centroids.Add(ghostCentroidRightRight);
-
-            //the colors list has to be the same size as the centroids list
-            nullColors.Add(0);
-            nullColors.Add(0);
-            nullColors.Add(0);
-        }
-
-        Voronoi voronoi = new Voronoi(centroids, nullColors, new Rect(0, 0, 3f * spatialWidth, spatialHeight));
-        List<List<Vector2>> vorRegions = voronoi.Regions();
-        var centralVorRegions = new List<List<Vector2>>();
-
-        //Now run the cylindricalisation step by removing all regions that are solely in the 2 ghost diagrams
-        for (int i = 0; i < vorRegions.Count; i++)
-        {
-            bool hasPointInMiddle = false;
-            for (int j = 0; j < vorRegions[i].Count; j++)
-            {
-                if ((vorRegions[i][j].x >= spatialWidth) && (vorRegions[i][j].x < (2f * spatialWidth)))
-                {
-                    hasPointInMiddle = true;
-                    break;
-                }
-            }
-
-            if (hasPointInMiddle)
-            {
-                centralVorRegions.Add(vorRegions[i]); // this region has points within our final diagram, so keep it
-            }
-        }
-
-        var cylindricalVorRegions = new List<List<Vector2>>();
-        //Also remove any overlap regions on the left hand side so that we only have one copy of each wrap-around polygon (on the right hand side)
-        for (int i = 0; i < centralVorRegions.Count; i++)
-        {
-            bool hasPointOutsideLeftBoundary = false;
-            for (int j = 0; j < centralVorRegions[i].Count; j++)
-            {
-                if (centralVorRegions[i][j].x < (width * triWidth))
-                {
-                    hasPointOutsideLeftBoundary = true;
-                    break;
-                }
-            }
-
-            if (!hasPointOutsideLeftBoundary)
-            {
-                // this region does not spill over the left side, so keep it, and shift all its points to the left by a mesh width
-                for (int p = 0; p < centralVorRegions[i].Count; p++)
-                {
-                    centralVorRegions[i][p] = new Vector2(centralVorRegions[i][p].x - spatialWidth, centralVorRegions[i][p].y);
-                }
-                cylindricalVorRegions.Add(centralVorRegions[i]); 
-            }
-        }
-
-        return cylindricalVorRegions;
+        reEnergise = true;
     }
 
 
 
     MaterialType[] types = new MaterialType[5];
     Dictionary<Plate, int> singlePlateSpacesCounts = new Dictionary<Plate, int>();
-    public void UpdateMesh()
+
+    public Mesh UpdateMesh()
     {
+        //Check for changed controls
+        //re-energise system
+        if (reEnergise)
+        {
+            for (int p = 0; p < plates.Length; p++)
+            {
+                plates[p].AccurateXSpeed += 1f;
+                plates[p].AccurateZSpeed += 1f;
+            }
+            reEnergise = false;
+        }
+        //randomise plate direction
+        if (randomiseMovement)
+        {
+            for (int p = 0; p < plates.Length; p++)
+            {
+                plates[p].AccurateXSpeed = 0;
+                plates[p].AccurateZSpeed = 0;
+                while ((plates[p].XSpeed < 0.3f && plates[p].XSpeed > -0.3f) && (plates[p].ZSpeed < 0.3f && plates[p].ZSpeed > -0.3f))
+                {
+                    plates[p].AccurateXSpeed = Random.Range(-2f, 2f);
+                    plates[p].AccurateZSpeed = Random.Range(-2f, 2f);
+                }
+            }
+            randomiseMovement = false;
+        }
+        seaLevel = maxHeight * seaLevelNext;
+        volcanoFrequency = volcanoFrequencyNext;
+
         MoveNodes(); // for every node, move it based on its plate's speed
 
         //Sort out empty regions first (cause by constructive margins)
@@ -775,75 +240,31 @@ public class Crust
                         //clear plate searching dict
                         singlePlateSpacesCounts.Clear();
 
-                        PlateInteraction(j, i, ref singlePlateSpacesCounts);
+                        Tectonics.PlateInteraction(j, i, this, ref crustNodes, ref movedCrustNodes, ref singlePlateSpacesCounts, subductionFactor, subductionVolcanoDepthThreshold, volcanoFrequency);
                     }
 
                     //Apply changes to corresponding vertex
                     int vertIndex = j + (i * width);
                     if (i % 2 == 0)
                     {
-                        verts[vertIndex].x = j * triWidth;
+                        verts[vertIndex].x = j * triSize;
                         verts[vertIndex].y = crustNodes[j, i][0].Height;
-                        verts[vertIndex].z = i * triHeight;
+                        verts[vertIndex].z = i * triSize;
                     }
                     else
                     {
-                        verts[vertIndex].x = (j * triWidth) + halfTriWidth;
+                        verts[vertIndex].x = (j * triSize) + halfTriSize;
                         verts[vertIndex].y = crustNodes[j, i][0].Height;
-                        verts[vertIndex].z = i * triHeight;
+                        verts[vertIndex].z = i * triSize;
                     }
-
-                    float h = verts[vertIndex].y;
-
 
                     //colour mesh
-                    float normalisedHeight;
-
-                    if (crustNodes[j, i][0].Type == MaterialType.Oceanic)
-                    {
-                        normalisedHeight = h / seaLevel;
-                        if (normalisedHeight > 1f)
-                        {
-                            colors[vertIndex] = ColorExtended.ColorEx.sandBrownLight;
-                        }
-                        else
-                        {
-                            colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.oceanDeepBlue, ColorExtended.ColorEx.oceanLightBlue, normalisedHeight); 
-                        }
-
-                    }
-                    else
-                    {
-                        if (h < seaLevel)
-                        {
-                            normalisedHeight = h / seaLevel;
-                            colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.oceanDeepBlue, ColorExtended.ColorEx.oceanShallowsBlue, normalisedHeight);
-                        }
-                        else
-                        {
-                            h -= seaLevel;
-                            if (h < maxHeight * 0.05f) //coast
-                            {
-                                normalisedHeight = h / maxHeight * 0.05f;
-                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.sandBrownLight, ColorExtended.ColorEx.sandBrownDark, normalisedHeight);
-                            }
-                            else if (h < maxHeight * 0.5f) //land
-                            {
-                                normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 0.45f, h - maxHeight * 0.05f);
-                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.forestGreenLight, ColorExtended.ColorEx.forestGreenDark, normalisedHeight);
-                            }
-                            else //mountains
-                            {
-                                normalisedHeight = Mathf.InverseLerp(0.0f, maxHeight * 1f, h - maxHeight * 0.5f);
-                                colors[vertIndex] = Color.Lerp(ColorExtended.ColorEx.mountainGrey, Color.white, normalisedHeight);
-                            }
-                        }
-                    }
+                    colors[vertIndex] = ColorExtended.ColorTerrain.CalculateColor(crustNodes[j, i][0], seaLevel, maxHeight);
                 }
             }
         }
 
-        for (int i = 0; i < height; i++)  
+        for (int i = 0; i < height; i++)
         {
             for (int j = 0; j < width; j++)
             {
@@ -867,7 +288,8 @@ public class Crust
         mesh.vertices = verts;
         mesh.colors = colors;
         mesh.RecalculateNormals();
-        meshFilter.mesh = mesh;
+
+        return mesh;
     }
 
     private void MoveNodes()
@@ -937,12 +359,12 @@ public class Crust
         if(crustNodes[xPos, zPos][0].Height < seaLevel * 0.5f)
         {
             float chance = Random.Range(0.0f, 1.0f);
-            if (chance > 0.95f) // 1 in 20 chance
+            if (chance < (0.001f * volcanoFrequency)) // 1 in 20 chance
             {
                 Volcano v = ObjectPooler.current.GetPooledVolcano();
                 v.X = xPos;
                 v.Z = zPos;
-                v.MaterialRate = 50; //How many rocks get thrown out of the volcano each frame
+                v.MaterialRate = Random.Range(50, 500); //How many rocks get thrown out of the volcano each frame
                 this.AddShieldVolcano(v);
             }
 
@@ -973,396 +395,6 @@ public class Crust
         crustNodes[xPos, zPos].Add(movedCrustNode);
     }
 
-    private void PlateInteraction(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts)
-    {
-        //plates are overlapping, check which should subduct underneath (virtual), and which should be the surface (non-virtual)
-
-        // check if there is more than one non-virtual plate
-        bool oneNonVirtual = false;
-        float nonVirtualHeight = 0f;
-        var currentNode = movedCrustNodes[xPos, zPos].First; // note: this refers to a LinkedListNode<T>, not a CrustNode
-        for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
-        {
-            if (!currentNode.Value.IsVirtual)
-            {
-                if (oneNonVirtual) { oneNonVirtual = false; break; } //multiple non-virtual nodes, break and go to plate interaction logic
-                else
-                {
-                    oneNonVirtual = true;
-                    nonVirtualHeight = currentNode.Value.Height;
-                }
-            }
-            currentNode = currentNode.Next;
-        }
-
-        if (oneNonVirtual) //one non-virtual node
-        {
-            //subduct all virtual nodes downwards
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            for (int i = 0; i < movedCrustNodes[xPos, zPos].Count; i++)
-            {
-                if (currentNode.Value.IsVirtual)
-                {
-                    currentNode.Value.Height = currentNode.Value.Height - subductionFactor; //subduct downwards
-                    
-                    //If the subducting plate is deep enough, random chance of new volcano
-                    if (movedCrustNodes[xPos, zPos].Last.Value.Height < nonVirtualHeight - subductionVolcanoDepthThreshold)
-                    {
-                        float chance = Random.Range(0.0f, 1.0f);
-                        if (chance > 0.99999f)
-                        {
-                            Volcano v = ObjectPooler.current.GetPooledVolcano();
-                            v.X = xPos;
-                            v.Z = zPos;
-                            v.MaterialRate = Random.Range(30, 60); //How many rocks get thrown out of the volcano each frame
-                            this.AddStratoVolcano(v); //steep sided volcano
-                        }
-                    }
-                }
-                currentNode = currentNode.Next;
-            }
-        }
-        else //multiple non-virtual nodes
-        {
-            CollidePlates(xPos, zPos, ref singlePlateSpacesCounts);
-        }
-
-        //Clear space in main array
-        int listLength = crustNodes[xPos, zPos].Count;
-        for (int i = 0; i < listLength; i++)
-        {
-            ObjectPooler.current.ReturnNodeToPool(crustNodes[xPos, zPos][i]);
-        }
-        crustNodes[xPos, zPos].Clear();
-        //crustNodes[xPos, zPos].TrimExcess();  <-- lower memory usage, higher processing cost
-
-        //Place moved nodes into freed space
-        currentNode = movedCrustNodes[xPos, zPos].First;
-        listLength = movedCrustNodes[xPos, zPos].Count;
-        for (int i = 0; i < listLength; i++)
-        {
-            //get rid of virtual nodes that are below the surface
-            if (!(currentNode.Value.IsVirtual && currentNode.Value.Height < 0.0f))
-            {
-                var movedCrustNode = ObjectPooler.current.GetPooledNode();
-                movedCrustNode.Copy(currentNode.Value);
-
-                crustNodes[xPos, zPos].Add(movedCrustNode);
-            }
-            currentNode = currentNode.Next;
-        }
-    }
-
-    private void CollidePlates(int xPos, int zPos, ref Dictionary<Plate, int> singlePlateSpacesCounts) //TODO: None of these methods properly consider Virtual nodes yet (need to change this!)
-    {
-        bool hasOceanic = false, hasContinental = false, hasMultipleOc = false, hasMultipleCo = false;
-        var currentNode = movedCrustNodes[xPos, zPos].First;
-        for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
-        {
-            //count oceanic/continental
-            if (currentNode.Value.Type == MaterialType.Oceanic)
-            {
-                if (hasOceanic != true) { hasOceanic = true; }
-                else { hasMultipleOc = true; }
-            }
-            else
-            {
-                if (hasContinental != true) { hasContinental = true; }
-                else { hasMultipleCo = true; }
-            }
-
-
-            //also (if non-virtual), cause nodes to affect eachother's plate's speeds
-            if (!currentNode.Value.IsVirtual)
-            {
-                var affectedNode = movedCrustNodes[xPos, zPos].First;
-                for (int n = 0; n < movedCrustNodes[xPos, zPos].Count; n++)
-                {
-                    if (n != k) // don't affect itself
-                    {
-                        affectedNode.Value.Plate.AffectPlateVector(currentNode.Value.Plate);
-                    }
-                    affectedNode = affectedNode.Next;
-                }
-            }
-
-            currentNode = currentNode.Next;
-        }
-
-        int listLength;
-        //if O-O, Lowest density plate subducts
-        if (!hasContinental)
-        {
-            int mostDense = 0;
-            float highestDensity = 0.0f;
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
-            {
-                if (currentNode.Value.Density > highestDensity)
-                {
-                    mostDense = k;
-                    highestDensity = currentNode.Value.Density;
-                }
-                currentNode = currentNode.Next;
-            }
-
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            listLength = movedCrustNodes[xPos, zPos].Count;
-            for (int k = 0; k < listLength; k++)
-            {
-                if (k != mostDense)
-                {
-                    currentNode.Value.IsVirtual = true;
-                    currentNode.Value.Height = currentNode.Value.Height - subductionFactor; //subduct downwards
-                    currentNode = currentNode.Next;
-                }
-                else
-                {
-                    currentNode.Value.IsVirtual = false;
-                    if (k != 0) //no need to move it to the start if it's already there
-                    {
-                        movedCrustNodes[xPos, zPos].AddFirst(currentNode.Value);
-                        var nodeToDelete = currentNode;
-                        currentNode = currentNode.Next;
-                        movedCrustNodes[xPos, zPos].Remove(nodeToDelete);
-                    }
-                }
-            }
-        }
-        //if C-C, crunch
-        else if (!hasOceanic)
-        {
-            //TEMPORARY, JUST USE THE OLD NAIVE CRUNCH
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            CrustNode fastestPlateNode = null;
-            float highestAggregateVelocity = 0f;
-            for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
-            {
-                //find fastest plate
-                float aggregateVelocity = Math.Abs(currentNode.Value.Plate.AccurateXSpeed) + Math.Abs(currentNode.Value.Plate.AccurateZSpeed);
-                if (aggregateVelocity > highestAggregateVelocity)
-                {
-                    fastestPlateNode = currentNode.Value;
-                    highestAggregateVelocity = aggregateVelocity;
-                }
-
-                //Add all present plates to dict to be used later for plate assignment
-                if (!singlePlateSpacesCounts.ContainsKey(currentNode.Value.Plate))
-                {
-                    singlePlateSpacesCounts.Add(currentNode.Value.Plate, 0);
-                }
-                currentNode = currentNode.Next;
-            }
-
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            for (int k = 0; k < movedCrustNodes[xPos, zPos].Count; k++)
-            {
-                if (currentNode.Value != fastestPlateNode && Random.Range(0.0f, 1.0f) > 0.99f)
-                {
-                    //add together the speeds of both plates relative to eachother to see how big the impact and resultant crumpling should be
-                    float comparativeX = fastestPlateNode.Plate.AccurateXSpeed - currentNode.Value.Plate.AccurateXSpeed; // (we flip the smaller vector for comparison)
-                    float comparativeZ = fastestPlateNode.Plate.AccurateZSpeed - currentNode.Value.Plate.AccurateZSpeed;
-
-                    //now get the magnitude of this comparison vector and this will represent the power of the collision
-                    float collisionMagnitude = Mathf.Sqrt(comparativeX * comparativeX + comparativeZ * comparativeZ);
-
-                    //Send out a pulse from this node in the opposite direction to the movement of the slower plate (could change all this later to consider weight/density/force etc)
-                    int pulseDistance = Mathf.RoundToInt(collisionMagnitude) * Random.Range(100,201);
-                    int halfPulseDistance = pulseDistance / 2;
-                    int xLoc = xPos;
-                    int zLoc = zPos;
-                    int dx = 1;
-                    int dz = 1;
-                    int moveCount = 0;
-
-                    if (currentNode.Value.Plate.AccurateXSpeed < 0)
-                    {
-                        dx = -1;
-                    }
-                    if (currentNode.Value.Plate.AccurateZSpeed < 0)
-                    {
-                        dz = -1;
-                    }
-
-                    if (currentNode.Value.Plate.ScaledVectorX == 1f)
-                    {
-                        for (int p = 0; p < pulseDistance; p++)
-                        {
-                            moveCount++;
-
-                            xLoc += dx;
-                            xLoc = xLoc % width;
-                            if (xLoc < 0) { xLoc = width + xLoc; }
-
-                            if (moveCount >= (1.0f / currentNode.Value.Plate.ScaledVectorZ))
-                            {
-                                zLoc += dz;
-                                zLoc = zLoc % height;
-                                if (zLoc < 0) { zLoc = height + zLoc; }
-
-                                moveCount = 0;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (int p = 0; p < pulseDistance; p++)
-                        {
-                            moveCount++;
-
-                            zLoc += dz;
-                            zLoc = zLoc % height;
-                            if (zLoc < 0) { zLoc = height + zLoc; }
-
-                            if (moveCount >= (1.0f / currentNode.Value.Plate.ScaledVectorX))
-                            {
-                                xLoc += dx;
-                                xLoc = xLoc % width;
-                                if (xLoc < 0) { xLoc = width + xLoc; }
-
-                                moveCount = 0;
-                            }
-                        }
-                    }
-
-                    if(Random.Range(0.0f, 1.0f) < 0.9f)
-                    {
-                        Volcano v = ObjectPooler.current.GetPooledVolcano();
-                        v.X = xPos;
-                        v.Z = zPos;
-                        v.Plate = currentNode.Value.Plate;
-                        v.MaterialRate = Random.Range(10, 150); //How many rocks get thrown out of the volcano each frame
-                        this.AddStratoVolcano(v);
-                    }
-                    else //random chance of a huge mountain
-                    {
-                        Volcano v = ObjectPooler.current.GetPooledVolcano();
-                        v.X = xPos;
-                        v.Z = zPos;
-                        v.Plate = currentNode.Value.Plate;
-                        v.MaterialRate = Random.Range(250, 300); //How many rocks get thrown out of the volcano each frame
-                        this.AddStratoVolcano(v);
-                    }
-                }
-            }
-
-
-            //assign nodes to plates
-            int searchDistance = 0;
-            bool found = false;
-            while (!found)
-            {
-                searchDistance++; // hexagon side length = searchDistance
-
-                //It is best to search in a hexagon outline shape. This algorithm will have to be horizontally flipped if working on an odd z value row
-                bool diagnonalMove = true; //Start with a diagonal move when searching from an odd row
-                if (zPos % 2 == 0)
-                {
-                    diagnonalMove = false;
-                }
-                //start at the left corner and move diagonally up, then across to the right, then diagonally down to the right corner
-                //at the same time, do the mirror opposite for the bottom half of the hexagon
-                int x, z;
-                x = -searchDistance;
-                z = 0;
-                // up/down from left corner
-                for (int c = 0; c < searchDistance; c++)
-                {
-                    CheckSpaceAndUpdateDict(xPos + x, zPos + z, ref singlePlateSpacesCounts, ref found); //top half
-                    CheckSpaceAndUpdateDict(xPos + x, zPos - z, ref singlePlateSpacesCounts, ref found); //bottom half
-                    if (diagnonalMove) { x++; }
-                    z++;
-                    diagnonalMove = !diagnonalMove;
-                }
-                // across top/bottom
-                for (int c = 0; c < searchDistance; c++)
-                {
-                    CheckSpaceAndUpdateDict(xPos + x, zPos + z, ref singlePlateSpacesCounts, ref found);
-                    CheckSpaceAndUpdateDict(xPos + x, zPos - z, ref singlePlateSpacesCounts, ref found);
-                    x++;
-                }
-                // down/up to right corner
-                for (int c = 0; c < searchDistance; c++)
-                {
-                    CheckSpaceAndUpdateDict(xPos + x, zPos + z, ref singlePlateSpacesCounts, ref found);
-                    CheckSpaceAndUpdateDict(xPos + x, zPos - z, ref singlePlateSpacesCounts, ref found);
-                    if (diagnonalMove) { x++; }
-                    z--;
-                    diagnonalMove = !diagnonalMove;
-                }
-            }
-
-            Plate closestPlate = null;
-            foreach (Plate plt in singlePlateSpacesCounts.Keys)
-            {
-                if (closestPlate == null || singlePlateSpacesCounts[plt] > singlePlateSpacesCounts[closestPlate])
-                {
-                    closestPlate = plt;
-                }
-            }
-            singlePlateSpacesCounts.Clear();
-
-            CrustNode chosenNode = movedCrustNodes[xPos, zPos].First.Value;
-            currentNode = movedCrustNodes[xPos, zPos].First;
-            listLength = movedCrustNodes[xPos, zPos].Count;
-            for (int k = 0; k < listLength; k++)
-            {
-                if (currentNode.Value.Plate == closestPlate)
-                {
-                    movedCrustNodes[xPos, zPos].AddFirst(currentNode.Value);
-                    var nodeToDelete = currentNode;
-                    currentNode = currentNode.Next;
-                    movedCrustNodes[xPos, zPos].Remove(nodeToDelete);
-                }
-                else
-                {
-                    //Remove
-                    ObjectPooler.current.ReturnNodeToPool(currentNode.Value);
-                    var nodeToDelete = currentNode;
-                    currentNode = currentNode.Next;
-                    movedCrustNodes[xPos, zPos].Remove(nodeToDelete);
-                }
-            }
-
-            movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
-        }
-        //if C-O, oceanic subducts
-        else
-        {
-            if (hasMultipleCo)
-            {
-                //for now, do nothing
-            }
-            else if (hasMultipleOc)
-            {
-                //for now do nothing
-            }
-            else // just one O and one C
-            {
-                float subductedHeight;
-                if (movedCrustNodes[xPos, zPos].First.Value.Type == MaterialType.Oceanic) //O,C
-                {
-                    movedCrustNodes[xPos, zPos].First.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].First.Value.Height = movedCrustNodes[xPos, zPos].First.Value.Height - subductionFactor; //subduct downwards
-                    subductedHeight = movedCrustNodes[xPos, zPos].First.Value.Height;
-
-                    movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = false;
-                    //move to the start of the list
-                    movedCrustNodes[xPos, zPos].AddFirst(movedCrustNodes[xPos, zPos].Last.Value);
-                    movedCrustNodes[xPos, zPos].Remove(movedCrustNodes[xPos, zPos].Last);
-                }
-                else //C,O
-                {
-                    movedCrustNodes[xPos, zPos].First.Value.IsVirtual = false;
-                    
-                    movedCrustNodes[xPos, zPos].Last.Value.IsVirtual = true;
-                    movedCrustNodes[xPos, zPos].Last.Value.Height = movedCrustNodes[xPos, zPos].Last.Value.Height - subductionFactor; //subduct downwards
-                    subductedHeight = movedCrustNodes[xPos, zPos].Last.Value.Height;
-                }
-            }
-        }
-    }
-
 
 
     //Implemented using particle deposition
@@ -1381,166 +413,7 @@ public class Crust
             }
             else //otherwise, do eruption (particle deposition)
             {
-				int rocksThrown = vol.Age * vol.MaterialRate;
-				int searchRange = 0; //higher search radius will make shallower slopes
-				int elevationThreshold = 0; //higher elevation threshold than 1 will make very steep slopes
-                float differenceFactor = heightSimilarityEpsilon;
-                for (int rock = 0; rock < vol.MaterialRate; rock++)
-                {
-					//choose a random drop point within volcano's radius
-					float dropPointAngle = 2 * Mathf.PI * Random.Range(0.0f, 1.0f);
-					float dropPointDistance = dropZoneRadius * Random.Range(0.0f, 1.0f);
-					float relativeDropX = Mathf.Cos(dropPointAngle) * dropPointDistance;
-					float relativeDropZ = Mathf.Sin(dropPointAngle) * dropPointDistance;
-                    int dropX = Mathf.RoundToInt(vol.X + relativeDropX);
-                    int dropZ = Mathf.RoundToInt(vol.Z + relativeDropZ);
-
-                    int currentX = dropX % width;
-                    int currentZ = dropZ % height;
-                    if (currentX < 0) { currentX = width + currentX; }
-                    if (currentZ < 0) { currentZ = height + currentZ; }
-
-					int noiseIndex = rocksThrown + rock;
-					searchRange = (int)(maxSearchRange * vol.NoiseArray[noiseIndex]) + 1; //should give range values from 1 to maxSearchRange ( and maxSearchRange+1 in some rare cases)
-                    if (maxElevationThreshold != 0)
-                    {
-                        elevationThreshold = (int)(maxElevationThreshold * vol.NoiseArray[vol.NoiseArray.Length - noiseIndex]); //should give values 0 to maxElevationThreshold-1 (2 maxElevationThreshold)
-                        differenceFactor = elevationThreshold + heightSimilarityEpsilon;
-                    }
-
-                    //rock rolling loop
-					bool stable = false;
-                    while (!stable)
-					{
-						for(int range=1; range<=searchRange; range++)
-						{
-                            //do hexagon search and randomise side priority
-
-                            bool diagnonalMove = true; //Start with a diagonal move when searching from an odd row
-                            if (currentZ % 2 == 0)
-                            {
-                                diagnonalMove = false;
-                            }
-
-                            int side = Random.Range(0,3);
-                            int searchX, searchZ;
-                            switch (side) //Move search markers
-                            {
-                                case 0:
-                                    searchX = -range; searchZ = 0;
-                                    break;
-                                case 1:
-                                    if (diagnonalMove) { searchX = ((range - 1)/2 + 1) - range; }
-                                    else { searchX = range/2 - range; }
-                                    searchZ = range;
-                                    break;
-                                default: //case 2
-                                    if (diagnonalMove) { searchX = range / 2 - range; }
-                                    else { searchX = ((range - 1) / 2 + 1) - range;  }
-                                    searchZ = range;
-                                    break;
-                            }
-
-                            stable = true;
-                            for (int s = 0; s<3; s++) //3 sets of parallel sides
-							{
-                                for (int c = 0; c < range; c++)
-								{
-                                    var currentNode = crustNodes[currentX, currentZ][0];
-                                    int crustIndexX = (currentX + searchX) % width;
-                                    if (crustIndexX < 0) { crustIndexX = width + crustIndexX; }
-                                    if (Random.value > 0.5f)//Randomise which side to check first (we don't want to bias the drops)
-                                    {
-                                        int crustIndexZ = (currentZ + searchZ) % height;
-                                        if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
-                                        var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
-
-                                        if (currentNode.Height - topHexagonNode.Height > differenceFactor)
-                                        {
-                                            currentX = crustIndexX;
-                                            currentZ = crustIndexZ;
-                                            stable = false;
-                                        }
-                                        else
-                                        {
-                                            crustIndexZ = (currentZ - searchZ) % height;
-                                            if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
-                                            var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
-
-                                            if (currentNode.Height - botHexagonNode.Height > differenceFactor)
-                                            {
-                                                currentX = crustIndexX;
-                                                currentZ = crustIndexZ;
-                                                stable = false;
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        int crustIndexZ = (currentZ - searchZ) % height;
-                                        if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
-                                        var botHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
-
-                                        if (currentNode.Height - botHexagonNode.Height > differenceFactor)
-                                        {
-                                            currentX = crustIndexX;
-                                            currentZ = crustIndexZ;
-                                            stable = false;
-                                        }
-                                        else
-                                        {
-                                            crustIndexZ = (currentZ + searchZ) % height;
-                                            if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
-                                            var topHexagonNode = crustNodes[crustIndexX, crustIndexZ][0];
-
-                                            if (currentNode.Height - topHexagonNode.Height > differenceFactor)
-                                            {
-                                                currentX = crustIndexX;
-                                                currentZ = crustIndexZ;
-                                                stable = false;
-                                            }
-                                        }
-                                    }
-
-                                    switch (side) //Move search markers
-									{
-										case 0:
-                                            if (diagnonalMove) { searchX++; }
-                                            searchZ++;
-                                            diagnonalMove = !diagnonalMove;
-                                            break;
-										case 1:
-                                            searchX++;
-                                            break;
-										case 2:
-                                            if (diagnonalMove) { searchX++; }
-                                            searchZ--;
-                                            diagnonalMove = !diagnonalMove;
-                                            break;
-									}
-								}
-
-                                if (stable) { break; }
-								side++;
-								if(side > 2)
-                                {
-                                    side = 0;
-                                    searchX = -range;
-                                    searchZ = 0;
-                                }
-							}
-
-                            if (stable) { break; }
-						}
-					}
-
-                    //drop the rock
-                    crustNodes[currentX, currentZ][0].Height += rockSize;
-                    if (vol.Plate != null)
-                    {
-                        crustNodes[currentX, currentZ][0].Plate = vol.Plate;
-                    }
-                }
+                crustNodes = TerrainGeneration.ParticleDeposition(crustNodes, vol, rockSize, heightSimilarityEpsilon, dropZoneRadius, maxSearchRange, maxElevationThreshold);
             }
 
             if (updateCoords)
@@ -1556,26 +429,6 @@ public class Crust
                     vol.Z = (vol.Z + crustNodes[vol.X, vol.Z][0].Plate.ZSpeed) % height;
                     if (vol.Z < 0) { vol.Z = height + vol.Z; }
                 }
-            }
-        }
-    }
-
-
-
-
-    private void CheckSpaceAndUpdateDict(int x, int z, ref Dictionary<Plate, int> plateCountsDict, ref bool found)
-    {
-        x = x % width;
-        if (x < 0) { x = width + x; }
-        z = z % height;
-        if (z < 0) { z = height + z; }
-
-        if (movedCrustNodes[x,z].Count == 1 && movedCrustNodes[x, z].First.Value.Plate != null)
-        {
-            if (plateCountsDict.ContainsKey(movedCrustNodes[x,z].First.Value.Plate))
-            {
-                plateCountsDict[movedCrustNodes[x,z].First.Value.Plate]++;
-                found = true;
             }
         }
     }

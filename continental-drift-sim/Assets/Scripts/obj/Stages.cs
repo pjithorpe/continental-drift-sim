@@ -6,6 +6,8 @@ using ColorExtended;
 
     /*********
      * STAGES
+     * 
+     * (not currently used)
      *********/
 
     public interface Stage
