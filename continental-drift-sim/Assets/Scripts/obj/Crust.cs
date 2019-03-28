@@ -5,7 +5,13 @@ using System.Collections.Generic;
 
 using Random = UnityEngine.Random;
 using Delaunay;
+using System.IO;
 
+/*
+ * Crust class which holds the attributes and methods for the surface/lithosphere.
+ * Also stores an array of the set of Plate objects, and structures holding the
+ * large number of CrustNode objects used by the simulation
+ */
 public class Crust
 {
     // field private vars
@@ -18,20 +24,18 @@ public class Crust
     private float volcanoFrequency;
     private Plate[] plates;
     private List<CrustNode>[,] crustNodes; // array of nodes for the whole mesh, arranged in a matrix according to their positions
+    private LinkedList<CrustNode>[,] movedCrustNodes;
     private List<Volcano> stratoVolcanos;
     private List<Volcano> shieldVolcanos;
 
 
     // non-field definitions
     private float halfTriSize;
-    private float spatialWidth; // (triWidth * width)
-    private float spatialHeight; // (triHeight * height)
     private int vertexCount;
     private int triCount;
     private Vector3[] verts;
     private int[] tris;
     private Color[] colors;
-    private LinkedList<CrustNode>[,] movedCrustNodes;
     private float subductionFactor;
     private float subductionVolcanoDepthThreshold; // how deep below the surface a subducting plate needs to be before it can produce surface volcanos
     private bool reEnergise = false;
@@ -63,8 +67,6 @@ public class Crust
         movedCrustNodes = MeshBuilder.BuildMovedCrustNodesArray(width, height);
 
         halfTriSize = triSize / 2;
-        spatialWidth = width * triSize;
-        spatialHeight = height * triSize;
         subductionFactor = maxHeight * 0.05f;
         subductionVolcanoDepthThreshold = maxHeight * 0.15f;
         shieldRockSize = maxHeight / 60f;
@@ -431,5 +433,35 @@ public class Crust
                 }
             }
         }
+    }
+
+
+
+    public void SaveMapToPNG()
+    {
+        Texture2D texture = new Texture2D(width, height, TextureFormat.ARGB32, false);
+
+        // colors used to tint the first 3 mip levels
+        Color white = Color.black;
+        white.a = 0f;
+        Color black = Color.black;
+        black.a = 1f;
+        
+        Color[] cols = texture.GetPixels();
+        for (int i = 0; i < cols.Length; ++i)
+        {
+            int xPos = i % width;
+            int zPos = i / width;
+
+            cols[i] = Color.Lerp(black, white, crustNodes[xPos, zPos][0].Height / maxHeight);
+        }
+        texture.SetPixels(cols);
+
+        // actually apply all SetPixels, don't recalculate mip levels
+        texture.Apply(false);
+
+        byte[] png = texture.EncodeToPNG();
+        UnityEngine.Object.Destroy(texture);
+        File.WriteAllBytes(Application.dataPath + "/../SavedMap.png", png);
     }
 }

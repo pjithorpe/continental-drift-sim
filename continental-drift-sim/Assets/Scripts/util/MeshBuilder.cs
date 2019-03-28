@@ -4,8 +4,11 @@ using UnityEngine;
 
 public static class MeshBuilder
 {
-    // Start is called before the first frame update
-    public static Mesh BuildMesh(MeshFilter mf, MeshRenderer mr, int width, int height, float triSize, bool addNoise)
+    /*
+     * Build the isometric grid mesh that will be the visualisation of the model
+     * 
+     */ 
+    public static Mesh BuildMesh(MeshFilter mf, MeshRenderer mr, int width, int height, float triSize)
     {
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -64,7 +67,7 @@ public static class MeshBuilder
         }
         mesh.triangles = tris;
 
-
+        //temporarily set colour of surface to grey
         var bedrockGrey = new Color32(79, 70, 60, 255);
         Color[] colors = new Color[verts.Length];
         for (int i = 0; i < colors.Length; i++)
@@ -81,7 +84,11 @@ public static class MeshBuilder
     }
 
 
-
+    /*
+     * Build the CrustNode array of lists that the Crust uses
+     * Utilises the Object Pooler to avoid needing the GC later
+     * on during the simulation.
+     */ 
     public static List<CrustNode>[,] BuildCrustNodesArray(int width, int height)
     {
         List<CrustNode>[,] nodes;
@@ -108,6 +115,9 @@ public static class MeshBuilder
         return nodes;
     }
 
+    /*
+     * Build the moved CrustNode array of linked lists that the Crust uses.
+     */ 
     public static LinkedList<CrustNode>[,] BuildMovedCrustNodesArray(int width, int height)
     {
         LinkedList<CrustNode>[,] movedNodes;

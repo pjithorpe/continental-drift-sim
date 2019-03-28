@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class MeshTest : MonoBehaviour
+public class SimulationDriver : MonoBehaviour
 {
 
     [SerializeField] public float triSize = 1f;
@@ -55,7 +55,7 @@ public class MeshTest : MonoBehaviour
     {
         moveSpeed = 0.15f;
 
-        Random.InitState(randomSeed);
+        //Random.InitState(randomSeed); uncomment to seed simulation
         mf = gameObject.AddComponent<MeshFilter>();
         mr = gameObject.AddComponent<MeshRenderer>();
 
@@ -67,7 +67,7 @@ public class MeshTest : MonoBehaviour
         sliderProgress += 0.2f;
         yield return null;
 
-        testCrust.Mesh = MeshBuilder.BuildMesh(mf, mr, meshWidth, meshHeight, triSize, addNoise: true);
+        testCrust.Mesh = MeshBuilder.BuildMesh(mf, mr, meshWidth, meshHeight, triSize);
 
         testCrust = TerrainGeneration.ApplyFractalToCrust(testCrust);
         Debug.Log("in apply: " + testCrust.CrustNodes[30, 222][0].Height);
@@ -140,5 +140,10 @@ public class MeshTest : MonoBehaviour
     public void RandomisePlateMovements()
     {
         testCrust.RandomisePlateMovements();
+    }
+
+    public void SaveMap()
+    {
+        testCrust.SaveMapToPNG();
     }
 }

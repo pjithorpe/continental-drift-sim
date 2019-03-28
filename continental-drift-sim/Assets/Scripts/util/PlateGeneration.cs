@@ -259,59 +259,6 @@ public static class PlateGeneration
             // Debug.Log("nodes: " + plates[i].NodeCount.ToString() + "density: " + plates[i].Density.ToString() + "mass: " + plates[i].Mass.ToString());
         }
 
-
-        /*var newNodes = new List<CrustNode>[crust.Width, crust.Height];
-
-        for (int i = 0; i < crust.Height; i++)
-        {
-            for (int j = 0; j < crust.Width; j++)
-            {
-                for (int n_i = 0; n_i < crust.CrustNodes[j, i].Count; n_i++)
-                {
-                    //Get new x and y for prev node
-                    CrustNode prevN = crust.CrustNodes[j, i][0];
-                    int newX = prevN.X;
-                    int newZ = prevN.Z;
-
-                    CrustNode nd = ObjectPooler.current.GetPooledNode();
-                    nd.Copy(prevN);
-                    nd.X = newX;
-                    nd.Z = newZ;
-                    newNodes[newX, newZ] = new List<CrustNode>();
-                    newNodes[newX, newZ].Add(nd);
-
-                    ObjectPooler.current.ReturnNodeToPool(prevN);
-
-
-                    int vertIndex = newX + (newZ * crust.Width);
-                    if (newZ % 2 == 0)
-                    {
-                        verts[vertIndex].x = newX * triWidth;
-                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
-                        verts[vertIndex].z = newZ * triHeight;
-                    }
-                    else
-                    {
-                        verts[vertIndex].x = (newX * triWidth) + halfTriWidth;
-                        verts[vertIndex].y = newNodes[newX, newZ][0].Height;
-                        verts[vertIndex].z = newZ * triHeight;
-                    }
-
-                    float h = verts[vertIndex].y;
-                    float normalisedHeight = h / maxHeight;
-                    colors[vertIndex] = stage.PickColour(normalisedHeight, seaLevel);
-                }
-            }
-        }
-
-        
-        crust.CrustNodes = newNodes;
-        /*
-        mesh.vertices = verts;
-        mesh.colors = colors;
-        meshFilter.mesh = mesh;
-        */
-
         return crust;
     }
 }

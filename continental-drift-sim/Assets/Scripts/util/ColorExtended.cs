@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace ColorExtended {
 
+    /*
+     * An extended colour palette
+     */ 
     public static class ColorEx
     {
         public static readonly Color oceanLightBlue = new Color32(28, 107, 160, 255);
@@ -17,6 +20,10 @@ namespace ColorExtended {
         public static readonly Color forestGreenDark = new Color32(10, 56, 10, 255);
     }
 
+    /*
+     * Method for deciding what colour any given point on the surface should be
+     * dependant on material type and height.
+     */ 
     public static class ColorTerrain
     {
         public static Color CalculateColor(CrustNode n, float seaLevel, float maxHeight)

@@ -1,6 +1,14 @@
 ﻿using UnityEngine;
 using UnityEditor;
 
+/*
+ * The class containing the attributes and methods for the Volcano object.
+ *     X,Z <- The Volcano's position on the crust
+ *     Age <- the number of iterations the Volcano has been active for
+ *     MaterialRate <- The number of iterations of the particle deposition algorithm that should be performed in one global iteration for this Volcano
+ *     NoiseArray <- array of floats randomly generated using 1D Perlin Noise. Used to make "random" decisions relating to the volcano
+ *     CleanObject <- must
+ */
 public class Volcano : PoolableObject
 {
     int x, z;
@@ -9,7 +17,9 @@ public class Volcano : PoolableObject
 	int[] noiseArray;
     Plate plate;
 
-    static int MAX_MATERIAL_PRODUCED = 5000; // maximum material produced = maximum volcano age * maximum material rate
+    static int MAX_MATERIAL_PRODUCED = 5000; //defnies the length of the noise function for the Volcano,
+                                             //so this value more more than the maximum age of any volcano
+                                             //multiplied by the maximum material rate of any volcano
 
     public Volcano(int x, int z, Plate plate, Crust crust)
     {
@@ -57,6 +67,9 @@ public class Volcano : PoolableObject
         plate = null;
     }
 
+    /*
+     * Create an array of values randomly generated using 1D Perlin Noise
+     */ 
     private int[] GenerateNoise()
     {
         int[] noiseArray = new int[MAX_MATERIAL_PRODUCED];

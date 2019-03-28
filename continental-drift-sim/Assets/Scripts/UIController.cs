@@ -5,13 +5,13 @@ using UnityEngine.UI;
 
 public class UIController : MonoBehaviour
 {
-    // Start is called before the first frame update
     bool paused = true;
     Button reEnergiseBtn;
     Button randDirectionBtn;
     InputField seaLvlInputField;
     InputField volFreqInputField;
 
+    // Start is called before the first frame update
     void Start()
     {
         reEnergiseBtn = GameObject.Find("ReEnergiseButton").GetComponent<Button>();
@@ -20,30 +20,31 @@ public class UIController : MonoBehaviour
         volFreqInputField = GameObject.Find("VolFrequencyInputField").GetComponent<InputField>();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     public void ReEnergise()
     {
-        MeshTest mainModule = GameObject.Find("CrustMesh").GetComponent<MeshTest>();
+        SimulationDriver mainModule = GameObject.Find("CrustMesh").GetComponent<SimulationDriver>();
         mainModule.ReEnergisePlates();
     }
 
     public void Randomise()
     {
-        MeshTest mainModule = GameObject.Find("CrustMesh").GetComponent<MeshTest>();
+        SimulationDriver mainModule = GameObject.Find("CrustMesh").GetComponent<SimulationDriver>();
         mainModule.RandomisePlateMovements();
+    }
+
+    public void Save()
+    {
+        SimulationDriver mainModule = GameObject.Find("CrustMesh").GetComponent<SimulationDriver>();
+        mainModule.SaveMap();
     }
 
     public void Pause(Text buttonText)
     {
-        MeshTest mainModule = GameObject.Find("CrustMesh").GetComponent<MeshTest>();
+        SimulationDriver mainModule = GameObject.Find("CrustMesh").GetComponent<SimulationDriver>();
 
         if (paused)
         {
+            //Show "playing" UI
             buttonText.text = "Pause";
 
             reEnergiseBtn.gameObject.SetActive(false);
@@ -55,6 +56,7 @@ public class UIController : MonoBehaviour
         }
         else
         {
+            //Show "paused" UI
             buttonText.text = "Play";
 
             reEnergiseBtn.gameObject.SetActive(true);

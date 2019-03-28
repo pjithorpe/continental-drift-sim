@@ -1,6 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
+/*
+ * Object Pooling class. Provides storage of resource pools and
+ * associated Provide (e.g. GetPooledNode) and Clean functions
+ * for managing poolable objects.
+ */
 public class ObjectPooler : MonoBehaviour
 {
     public static ObjectPooler current;
@@ -74,6 +79,9 @@ public class ObjectPooler : MonoBehaviour
     }
 }
 
+/*
+ * Each type of poolable object must implement a "cleaning" method which resets it to its initial state
+ */ 
 public abstract class PoolableObject
 {
     public abstract void CleanObject();

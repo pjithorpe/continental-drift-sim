@@ -457,12 +457,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68dc28d5423b19d4fa35ee513ad7e098, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  triWidth: 1
-  triHeight: 1
+  triSize: 1
   meshWidth: 512
   meshHeight: 512
-  randomSeed: 577000
-  plateCount: 8
+  randomSeed: 84848
+  plateCount: 16
   voronoiRelaxationSteps: 6
   loadingText: {fileID: 939151739}
   sliderBar: {fileID: 1710398376}
@@ -765,7 +764,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1215732272}
-        m_MethodName: Pause
+        m_MethodName: Save
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

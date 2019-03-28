@@ -255,8 +255,6 @@ public static class TerrainGeneration
                                 }
                                 else
                                 {
-                                    crustIndexZ = (currentZ - searchZ) % height;
-                                    if (crustIndexZ < 0) { crustIndexZ = height + crustIndexZ; }
                                     var botHexagonNode = nodes[crustIndexX, crustIndexZ][0];
 
                                     if (currentNode.Height - botHexagonNode.Height > differenceFactor)
@@ -328,6 +326,7 @@ public static class TerrainGeneration
 
             //drop the rock
             nodes[currentX, currentZ][0].Height += rockSize;
+            nodes[currentX, currentZ][0].Type = MaterialType.Continental;
             if (vol.Plate != null)
             {
                 nodes[currentX, currentZ][0].Plate = vol.Plate;
